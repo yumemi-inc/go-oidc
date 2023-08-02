@@ -1,22 +1,19 @@
 package authz
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/samber/lo"
 
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2"
+	"github.com/yumemi-inc/go-oidc/pkg/oauth2/errors"
+	"github.com/yumemi-inc/go-oidc/pkg/oauth2/pkce"
 )
 
 var (
-	ErrClientIDMismatch           = errors.New("client ID mismatch")
-	ErrInvalidRedirectURI         = errors.New("invalid redirect URI")
-	ErrInvalidScopeFormat         = errors.New("invalid scope format")
-	ErrPKCERequired               = errors.New("initiating PKCE required")
-	ErrPKCEDenied                 = errors.New("initiating PKCE denied")
-	ErrInvalidCodeChallenge       = errors.New("invalid code challenge")
-	ErrInvalidCodeChallengeMethod = errors.New("invalid code challenge method")
+	ErrClientIDMismatch   = errors.New(errors.KindInvalidClient, "client ID mismatch")
+	ErrInvalidRedirectURI = errors.New(errors.KindInvalidRequest, "invalid redirect URI")
+	ErrInvalidScopeFormat = errors.New(errors.KindInvalidScope, "invalid scope format")
 )
 
 type ResponseType string
@@ -29,24 +26,13 @@ const (
 	ResponseTypeToken ResponseType = "token"
 )
 
-type CodeChallengeMethod string
-
-const (
-	// CodeChallengeMethodPlain initiates PKCE with plain verifier.
-	CodeChallengeMethodPlain CodeChallengeMethod = "plain"
-
-	// CodeChallengeMethodS256 initiates PKCE with SHA-256 verifier.
-	CodeChallengeMethodS256 CodeChallengeMethod = "S256"
-)
-
 type Request struct {
-	ResponseType        ResponseType         `form:"response_type"`
-	ClientID            string               `form:"client_id"`
-	RedirectURI         *string              `form:"redirect_uri,omitempty"`
-	Scope               *string              `form:"scope,omitempty"`
-	State               *string              `form:"state,omitempty"`
-	CodeChallenge       *string              `form:"code_challenge,omitempty"`
-	CodeChallengeMethod *CodeChallengeMethod `form:"code_challenge_method,omitempty"`
+	ResponseType ResponseType `form:"response_type"`
+	ClientID     string       `form:"client_id"`
+	RedirectURI  *string      `form:"redirect_uri,omitempty"`
+	Scope        *string      `form:"scope,omitempty"`
+	State        *string      `form:"state,omitempty"`
+	pkce.Challenge
 }
 
 type Response struct {
@@ -62,82 +48,41 @@ func (r *Request) Scopes() []string {
 	return strings.Split(*r.Scope, " ")
 }
 
-type PKCEMode int
-
-const (
-	// PKCEModeRequiredStrict requires the client to initiate PKCE with S256 challenge method.
-	PKCEModeRequiredStrict PKCEMode = iota
-
-	// PKCEModeRequired requires the client to initiate PKCE.
-	PKCEModeRequired
-
-	// PKCEModeAllowed allows the client to initiate PKCE, but not required.
-	PKCEModeAllowed
-
-	// PKCEModeDenied denies any request initiating PKCE.
-	PKCEModeDenied
-)
-
 type RequestValidateOptions struct {
-	PKCEMode PKCEMode
+	PKCEMode pkce.Mode
 }
 
-func (r *Request) ValidateWithOptions(client oauth2.Client, options RequestValidateOptions) error {
+func (r *Request) ValidateWithOptions(client oauth2.Client, options RequestValidateOptions) *errors.Error {
 	if client.GetID() != r.ClientID {
-		return ErrClientIDMismatch
-	}
-
-	if lo.Contains([]PKCEMode{PKCEModeRequiredStrict, PKCEModeRequired}, options.PKCEMode) && r.CodeChallenge == nil {
-		return ErrPKCERequired
-	}
-
-	codeChallengeMethod := CodeChallengeMethodPlain
-	if r.CodeChallengeMethod != nil {
-		codeChallengeMethod = *r.CodeChallengeMethod
-	}
-
-	if options.PKCEMode == PKCEModeRequiredStrict && codeChallengeMethod != CodeChallengeMethodS256 {
-		return ErrPKCERequired
-	}
-
-	if options.PKCEMode == PKCEModeDenied {
-		if r.CodeChallenge != nil {
-			return ErrPKCEDenied
-		}
-	} else if r.CodeChallenge != nil {
-		switch codeChallengeMethod {
-		case CodeChallengeMethodPlain, CodeChallengeMethodS256:
-			if len(*r.CodeChallenge) < 43 || len(*r.CodeChallenge) > 128 {
-				return ErrInvalidCodeChallenge
-			}
-
-		default:
-			return ErrInvalidCodeChallengeMethod
-		}
+		return &ErrClientIDMismatch
 	}
 
 	if r.RedirectURI != nil {
 		if !lo.Contains(client.GetRedirectURIs(), *r.RedirectURI) {
-			return ErrInvalidRedirectURI
+			return &ErrInvalidRedirectURI
 		}
 	}
 
 	if r.Scope != nil {
 		for _, b := range []byte(*r.Scope) {
 			if b < 0x21 || b == 0x22 || b == 0x5c || b > 0x7e {
-				return ErrInvalidScopeFormat
+				return &ErrInvalidScopeFormat
 			}
 		}
+	}
+
+	if err := r.Challenge.Validate(options.PKCEMode); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (r *Request) Validate(client oauth2.Client) error {
+func (r *Request) Validate(client oauth2.Client) *errors.Error {
 	return r.ValidateWithOptions(
 		client,
 		RequestValidateOptions{
-			PKCEMode: PKCEModeAllowed,
+			PKCEMode: pkce.ModeAllowed,
 		},
 	)
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2"
+	"github.com/yumemi-inc/go-oidc/pkg/oauth2/pkce"
 )
 
 type TestClient struct{}
@@ -41,20 +42,22 @@ func TestRequest_ValidateWithOptions(t *testing.T) {
 		ClientID:     "test_client",
 		RedirectURI:  lo.ToPtr("https://foo.example.com/callback"),
 	}
-	require.NoError(t, request.ValidateWithOptions(client, RequestValidateOptions{PKCEMode: PKCEModeDenied}))
+	require.Nil(t, request.ValidateWithOptions(client, RequestValidateOptions{PKCEMode: pkce.ModeDenied}))
 
 	codeVerifier := make([]byte, 64)
 	lo.Must(rand.Read(codeVerifier))
 
 	// With PKCE
 	request = Request{
-		ResponseType:        ResponseTypeCode,
-		ClientID:            "test_client",
-		RedirectURI:         lo.ToPtr("https://foo.example.com/callback"),
-		CodeChallenge:       lo.ToPtr(base64.URLEncoding.EncodeToString(codeVerifier)),
-		CodeChallengeMethod: lo.ToPtr(CodeChallengeMethodS256),
+		ResponseType: ResponseTypeCode,
+		ClientID:     "test_client",
+		RedirectURI:  lo.ToPtr("https://foo.example.com/callback"),
+		Challenge: pkce.Challenge{
+			CodeChallenge:       lo.ToPtr(base64.URLEncoding.EncodeToString(codeVerifier)),
+			CodeChallengeMethod: lo.ToPtr(pkce.CodeChallengeMethodS256),
+		},
 	}
-	require.NoError(t, request.ValidateWithOptions(client, RequestValidateOptions{PKCEMode: PKCEModeRequiredStrict}))
+	require.Nil(t, request.ValidateWithOptions(client, RequestValidateOptions{PKCEMode: pkce.ModeRequiredStrict}))
 
 	// Client ID mismatch
 	request = Request{
@@ -62,7 +65,7 @@ func TestRequest_ValidateWithOptions(t *testing.T) {
 		ClientID:     "invalid_client",
 		RedirectURI:  lo.ToPtr("https://foo.example.com/callback"),
 	}
-	require.Equal(t, ErrClientIDMismatch, request.Validate(client))
+	require.Equal(t, &ErrClientIDMismatch, request.Validate(client))
 
 	// Invalid redirect URI
 	request = Request{
@@ -70,7 +73,7 @@ func TestRequest_ValidateWithOptions(t *testing.T) {
 		ClientID:     "test_client",
 		RedirectURI:  lo.ToPtr("https://foo.example.com/"),
 	}
-	require.Equal(t, ErrInvalidRedirectURI, request.Validate(client))
+	require.Equal(t, &ErrInvalidRedirectURI, request.Validate(client))
 
 	// Invalid scope format
 	request = Request{
@@ -79,7 +82,7 @@ func TestRequest_ValidateWithOptions(t *testing.T) {
 		RedirectURI:  lo.ToPtr("https://foo.example.com/callback"),
 		Scope:        lo.ToPtr("スコープ"),
 	}
-	require.Equal(t, ErrInvalidScopeFormat, request.Validate(client))
+	require.Equal(t, &ErrInvalidScopeFormat, request.Validate(client))
 
 	// PKCE required
 	request = Request{
@@ -88,38 +91,44 @@ func TestRequest_ValidateWithOptions(t *testing.T) {
 		RedirectURI:  lo.ToPtr("https://foo.example.com/callback"),
 	}
 	require.Equal(
-		t, ErrPKCERequired,
-		request.ValidateWithOptions(client, RequestValidateOptions{PKCEMode: PKCEModeRequired}),
+		t, &pkce.ErrPKCERequired,
+		request.ValidateWithOptions(client, RequestValidateOptions{PKCEMode: pkce.ModeRequired}),
 	)
 
 	// PKCE denied
 	request = Request{
-		ResponseType:  ResponseTypeCode,
-		ClientID:      "test_client",
-		RedirectURI:   lo.ToPtr("https://foo.example.com/callback"),
-		CodeChallenge: lo.ToPtr("code_verifier"),
+		ResponseType: ResponseTypeCode,
+		ClientID:     "test_client",
+		RedirectURI:  lo.ToPtr("https://foo.example.com/callback"),
+		Challenge: pkce.Challenge{
+			CodeChallenge: lo.ToPtr("code_verifier"),
+		},
 	}
 	require.Equal(
-		t, ErrPKCEDenied,
-		request.ValidateWithOptions(client, RequestValidateOptions{PKCEMode: PKCEModeDenied}),
+		t, &pkce.ErrPKCEDenied,
+		request.ValidateWithOptions(client, RequestValidateOptions{PKCEMode: pkce.ModeDenied}),
 	)
 
 	// Invalid code challenge
 	request = Request{
-		ResponseType:  ResponseTypeCode,
-		ClientID:      "test_client",
-		RedirectURI:   lo.ToPtr("https://foo.example.com/callback"),
-		CodeChallenge: lo.ToPtr("too_short"),
+		ResponseType: ResponseTypeCode,
+		ClientID:     "test_client",
+		RedirectURI:  lo.ToPtr("https://foo.example.com/callback"),
+		Challenge: pkce.Challenge{
+			CodeChallenge: lo.ToPtr("too_short"),
+		},
 	}
-	require.Equal(t, ErrInvalidCodeChallenge, request.Validate(client))
+	require.Equal(t, &pkce.ErrInvalidCodeChallenge, request.Validate(client))
 
 	// Invalid code challenge method
 	request = Request{
-		ResponseType:        ResponseTypeCode,
-		ClientID:            "test_client",
-		RedirectURI:         lo.ToPtr("https://foo.example.com/callback"),
-		CodeChallenge:       lo.ToPtr(base64.URLEncoding.EncodeToString(codeVerifier)),
-		CodeChallengeMethod: lo.ToPtr[CodeChallengeMethod]("invalid_code_challenge"),
+		ResponseType: ResponseTypeCode,
+		ClientID:     "test_client",
+		RedirectURI:  lo.ToPtr("https://foo.example.com/callback"),
+		Challenge: pkce.Challenge{
+			CodeChallenge:       lo.ToPtr(base64.URLEncoding.EncodeToString(codeVerifier)),
+			CodeChallengeMethod: lo.ToPtr[pkce.CodeChallengeMethod]("invalid_code_challenge"),
+		},
 	}
-	require.Equal(t, ErrInvalidCodeChallengeMethod, request.Validate(client))
+	require.Equal(t, &pkce.ErrInvalidCodeChallengeMethod, request.Validate(client))
 }

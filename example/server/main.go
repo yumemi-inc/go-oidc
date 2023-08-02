@@ -7,10 +7,12 @@ import (
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/samber/lo"
 	"github.com/yumemi-inc/go-encoding-form"
 
-	oauth2 "github.com/yumemi-inc/go-oidc/pkg/oauth2/authz"
+	oauth2token "github.com/yumemi-inc/go-oidc/pkg/oauth2/token"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/authz"
+	"github.com/yumemi-inc/go-oidc/pkg/oidc/token"
 	"github.com/yumemi-inc/go-oidc/pkg/urls"
 )
 
@@ -37,11 +39,9 @@ func main() {
 			}
 
 			if err := req.Validate(clients[req.ClientID]); err != nil {
-				errResponse := authz.Error{
-					Error: oauth2.Error{
-						Kind:        oauth2.ErrorKindInvalidRequest,
-						Description: err.Error(),
-					},
+				errResponse := *err
+				if state := req.State; state != nil {
+					errResponse = errResponse.WithState(*state)
 				}
 
 				if req.RedirectURI != nil {
@@ -65,6 +65,41 @@ func main() {
 			sess.Values["authz_request"] = req
 
 			return c.Redirect(http.StatusFound, "/login")
+		},
+	)
+
+	e.POST(
+		"/token",
+		func(c echo.Context) error {
+			ctx := c.Request().Context()
+
+			req := new(token.Request)
+			if err := c.Bind(req); err != nil {
+				return err
+			}
+
+			sess, _ := session.Get("session", c)
+			authzRequest := sess.Values["authz_request"].(*authz.Request)
+
+			if err := req.Validate(ctx, authzRequest, clients[req.ClientID]); err != nil {
+				errResponse := *err
+				if state := authzRequest.State; state != nil {
+					errResponse = errResponse.WithState(*state)
+				}
+
+				return c.JSON(http.StatusBadRequest, errResponse)
+			}
+
+			res := token.Response{
+				Response: oauth2token.Response{
+					AccessToken: "token",
+					TokenType:   oauth2token.TokenTypeBearer,
+					ExpiresIn:   lo.ToPtr(uint(3600)),
+					Scope:       authzRequest.Scope,
+				},
+			}
+
+			return c.JSON(http.StatusOK, res)
 		},
 	)
 

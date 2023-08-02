@@ -1,12 +1,12 @@
 package authz
 
 import (
-	"errors"
-
 	"github.com/samber/lo"
 
 	oauth2 "github.com/yumemi-inc/go-oidc/pkg/oauth2/authz"
+	oauth2errors "github.com/yumemi-inc/go-oidc/pkg/oauth2/errors"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc"
+	"github.com/yumemi-inc/go-oidc/pkg/oidc/errors"
 )
 
 const (
@@ -14,7 +14,7 @@ const (
 )
 
 var (
-	ErrOpenIDScopeRequired = errors.New("openid scope is required")
+	ErrOpenIDScopeRequired = oauth2errors.New(oauth2errors.KindInvalidRequest, "openid scope is required")
 )
 
 type ResponseMode string
@@ -56,13 +56,13 @@ type Request struct {
 	ACRValues    *string       `form:"acr_values"`
 }
 
-func (r *Request) Validate(client oidc.Client) error {
+func (r *Request) Validate(client oidc.Client) *errors.Error {
 	if err := r.Request.Validate(client); err != nil {
-		return err
+		return lo.ToPtr(errors.NewFromOauth2(*err))
 	}
 
 	if !lo.Contains(r.Scopes(), ScopeOpenID) {
-		return ErrOpenIDScopeRequired
+		return lo.ToPtr(errors.NewFromOauth2(ErrOpenIDScopeRequired))
 	}
 
 	return nil
