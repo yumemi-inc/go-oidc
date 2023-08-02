@@ -13,6 +13,14 @@ type Client struct {
 	RedirectURIs []string
 }
 
+func (c Client) Type() oauth2.ClientType {
+	if c.Secret != "" {
+		return oauth2.ClientTypeConfidential
+	}
+
+	return oauth2.ClientTypePublic
+}
+
 func (c Client) GetID() string {
 	return c.ID
 }
@@ -21,12 +29,8 @@ func (c Client) GetRedirectURIs() []string {
 	return c.RedirectURIs
 }
 
-func (c Client) RequiresAuthentication() bool {
-	return c.Secret != ""
-}
-
 func (c Client) Authenticate(_ context.Context, secret string) error {
-	if !c.RequiresAuthentication() {
+	if c.Type() != oauth2.ClientTypeConfidential {
 		return nil
 	}
 
@@ -38,7 +42,7 @@ func (c Client) Authenticate(_ context.Context, secret string) error {
 }
 
 func (c Client) AuthenticationMethod() oidc.ClientAuthenticationMethod {
-	if c.RequiresAuthentication() {
+	if c.Type() == oauth2.ClientTypeConfidential {
 		return oidc.ClientAuthenticationMethodClientSecretPOST
 	}
 

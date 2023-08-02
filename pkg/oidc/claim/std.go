@@ -42,6 +42,10 @@ func IssFromStr(s string) (*Iss, error) {
 	return NewIss(*u)
 }
 
+func (c Iss) ClaimName() string {
+	return "iss"
+}
+
 // Sub is the subject identifier.
 type Sub string
 
@@ -53,11 +57,19 @@ func NewSub(s string) (*Sub, error) {
 	return typeconv.Ptr(Sub(s)), nil
 }
 
+func (c Sub) ClaimName() string {
+	return "sub"
+}
+
 // Aud is audience(s) that the token is intended for.
 type Aud []string
 
 func NewAud(s []string) *Aud {
 	return typeconv.Ptr[Aud](s)
+}
+
+func (c Aud) ClaimName() string {
+	return "aud"
 }
 
 // Exp is the expiration time on or after which the token MUST NOT be accepted for processing.
@@ -71,6 +83,10 @@ func ExpFromInt64(i int64) *Exp {
 	return NewExp(time.Unix(i, 0))
 }
 
+func (c Exp) ClaimName() string {
+	return "exp"
+}
+
 // Iat is the time at which the token was issued.
 type Iat time.Time
 
@@ -80,6 +96,10 @@ func NewIat(t time.Time) *Iat {
 
 func IatFromInt64(i int64) *Iat {
 	return NewIat(time.Unix(i, 0))
+}
+
+func (c Iat) ClaimName() string {
+	return "iat"
 }
 
 // AuthTime is the time when the end-user authentication occurred.
@@ -93,11 +113,19 @@ func AuthTimeFromInt64(i int64) *AuthTime {
 	return NewAuthTime(time.Unix(i, 0))
 }
 
+func (c AuthTime) ClaimName() string {
+	return "auth_time"
+}
+
 // Nonce is a string value used to associate a client session with the token, and to mitigate replay attacks.
 type Nonce string
 
 func NewNonce(s string) *Nonce {
 	return typeconv.Ptr(Nonce(s))
+}
+
+func (c Nonce) ClaimName() string {
+	return "nonce"
 }
 
 // Acr is the authentication context class reference.
@@ -107,6 +135,10 @@ func NewAcr(s string) *Acr {
 	return typeconv.Ptr(Acr(s))
 }
 
+func (c Acr) ClaimName() string {
+	return "acr"
+}
+
 // Amr is the authentication methods references.
 type Amr []string
 
@@ -114,9 +146,17 @@ func NewAmr(s []string) *Amr {
 	return typeconv.Ptr[Amr](s)
 }
 
+func (c Amr) ClaimName() string {
+	return "amr"
+}
+
 // Azp is the authorized party - the party to which the token was issued.
 type Azp string
 
 func NewAzp(s string) *Azp {
 	return typeconv.Ptr(Azp(s))
+}
+
+func (c Azp) ClaimName() string {
+	return "azp"
 }
