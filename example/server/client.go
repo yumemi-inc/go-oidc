@@ -38,5 +38,9 @@ func (c Client) Authenticate(_ context.Context, secret string) error {
 }
 
 func (c Client) AuthenticationMethod() oidc.ClientAuthenticationMethod {
+	if c.RequiresAuthentication() {
+		return oidc.ClientAuthenticationMethodClientSecretPOST
+	}
+
 	return oidc.ClientAuthenticationMethodNone
 }
