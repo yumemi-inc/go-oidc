@@ -36,11 +36,6 @@ type Request struct {
 	pkce.Challenge
 }
 
-type Response struct {
-	Code  string  `form:"code"`
-	State *string `form:"state,omitempty"`
-}
-
 func (r *Request) Scopes() []string {
 	if r.Scope == nil {
 		return nil

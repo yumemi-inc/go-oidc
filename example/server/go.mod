@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo/v4 v4.10.2
-	github.com/yumemi-inc/go-encoding-form v0.0.0-20230711154740-666f1e93c589
+	github.com/yumemi-inc/go-encoding-form v0.0.0-20230802080307-2f1669dd70ed
 	github.com/yumemi-inc/go-oidc v0.0.0-00010101000000-000000000000
 )
 

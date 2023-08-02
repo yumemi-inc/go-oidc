@@ -1,4 +1,6 @@
 github.com/samber/lo v1.38.1 h1:j2XEAqXKb09Am4ebOg31SpvzUTTs6EN3VfgeLUhPdXM=
 github.com/samber/lo v1.38.1/go.mod h1:+m/ZKRl6ClXCE2Lgf3MsQlWfh4bn1bz6CXEOxnEXnEA=
+github.com/yumemi-inc/go-encoding-form v0.0.0-20230711154740-666f1e93c589 h1:G89dNJLadByeQg3Q1h1StKSvqGmWfBRzB5buGMQ82gU=
+github.com/yumemi-inc/go-encoding-form v0.0.0-20230711154740-666f1e93c589/go.mod h1:rALKrnMfehmO78BcDHiEBxrhcGwi85hilEmtTj3F+Wc=
 golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 h1:3MTrJm4PyNL9NBqvYDSj3DHl46qQakyfqfWo4jgfaEM=
 golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17/go.mod h1:lgLbSvA5ygNOMpwM/9anMpWVlVJ7Z+cHWq/eFuinpGE=

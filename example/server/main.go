@@ -1,6 +1,10 @@
 package main
 
 import (
+	"crypto/rand"
+	_ "embed"
+	"encoding/base64"
+	"encoding/gob"
 	"net/http"
 
 	"github.com/gorilla/sessions"
@@ -10,11 +14,23 @@ import (
 	"github.com/samber/lo"
 	"github.com/yumemi-inc/go-encoding-form"
 
+	"github.com/yumemi-inc/go-oidc/internal/typeconv"
+	"github.com/yumemi-inc/go-oidc/pkg/oauth2/errors"
 	oauth2token "github.com/yumemi-inc/go-oidc/pkg/oauth2/token"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/authz"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/token"
 	"github.com/yumemi-inc/go-oidc/pkg/urls"
 )
+
+//go:embed login.html
+var loginHTML string
+
+var users = map[string]User{
+	"user1": {
+		ID:       "user1",
+		Password: "password1",
+	},
+}
 
 var clients = map[string]Client{
 	"client1": {
@@ -25,10 +41,68 @@ var clients = map[string]Client{
 	},
 }
 
+var authorizedRequests = make(map[string]*authz.Request)
+
+func init() {
+	gob.Register(&authz.Request{})
+}
+
 func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secret"))))
+
+	e.GET(
+		"/login",
+		func(c echo.Context) error {
+			return c.HTML(http.StatusOK, loginHTML)
+		},
+	)
+
+	e.POST(
+		"/login",
+		func(c echo.Context) error {
+			req := new(User)
+			if err := c.Bind(req); err != nil {
+				return err
+			}
+
+			user, ok := users[req.ID]
+			if !ok || user.Password != req.Password {
+				return echo.ErrUnauthorized
+			}
+
+			sess, _ := session.Get("session", c)
+			authzRequest, ok := sess.Values["authz_request"].(*authz.Request)
+			if !ok {
+				return echo.ErrBadRequest
+			}
+
+			delete(sess.Values, "authz_request")
+			lo.Must0(sess.Save(c.Request(), c.Response()))
+
+			bytes := make([]byte, 32)
+			if _, err := rand.Read(bytes); err != nil {
+				return err
+			}
+
+			code := base64.RawURLEncoding.EncodeToString(bytes)
+			response := authz.NewResponse(code)
+			authorizedRequests[code] = authzRequest
+
+			query, err := form.MarshalForm(response)
+			if err != nil {
+				return err
+			}
+
+			redirectURI, err := urls.AppendQueryString(lo.FromPtr(authzRequest.RedirectURI), string(query))
+			if err != nil {
+				return err
+			}
+
+			return c.Redirect(http.StatusFound, redirectURI)
+		},
+	)
 
 	e.GET(
 		"/authorize",
@@ -63,6 +137,7 @@ func main() {
 
 			sess, _ := session.Get("session", c)
 			sess.Values["authz_request"] = req
+			lo.Must0(sess.Save(c.Request(), c.Response()))
 
 			return c.Redirect(http.StatusFound, "/login")
 		},
@@ -78,10 +153,28 @@ func main() {
 				return err
 			}
 
-			sess, _ := session.Get("session", c)
-			authzRequest := sess.Values["authz_request"].(*authz.Request)
+			client := clients[req.ClientID]
+			if client.RequiresSecret() && typeconv.IsEmptyOrNil(req.ClientSecret) {
+				clientID, clientSecret, ok := c.Request().BasicAuth()
+				if !ok {
+					c.Response().Header().Set(echo.HeaderWWWAuthenticate, "Basic")
 
-			if err := req.Validate(ctx, authzRequest, clients[req.ClientID]); err != nil {
+					return echo.ErrUnauthorized
+				}
+
+				if clientID != req.ClientID {
+					return echo.NewHTTPError(http.StatusBadRequest, "client ID mismatch")
+				}
+
+				req.ClientSecret = &clientSecret
+			}
+
+			authzRequest, ok := authorizedRequests[lo.FromPtr(req.Code)]
+			if !ok {
+				return errors.New(errors.KindInvalidGrant, "unknown authorization code")
+			}
+
+			if err := req.Validate(ctx, authzRequest, client); err != nil {
 				errResponse := *err
 				if state := authzRequest.State; state != nil {
 					errResponse = errResponse.WithState(*state)

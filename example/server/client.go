@@ -12,6 +12,10 @@ type Client struct {
 	RedirectURIs []string
 }
 
+func (c Client) RequiresSecret() bool {
+	return c.Secret != ""
+}
+
 func (c Client) GetID() string {
 	return c.ID
 }
@@ -21,6 +25,10 @@ func (c Client) GetRedirectURIs() []string {
 }
 
 func (c Client) Authenticate(_ context.Context, secret string) error {
+	if !c.RequiresSecret() {
+		return nil
+	}
+
 	if secret != c.Secret {
 		return oauth2.ErrInvalidClientCredentials
 	}
