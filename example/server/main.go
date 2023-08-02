@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	_ "embed"
 	"encoding/base64"
@@ -14,9 +15,9 @@ import (
 	"github.com/samber/lo"
 	"github.com/yumemi-inc/go-encoding-form"
 
-	"github.com/yumemi-inc/go-oidc/internal/typeconv"
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2/errors"
 	oauth2token "github.com/yumemi-inc/go-oidc/pkg/oauth2/token"
+	"github.com/yumemi-inc/go-oidc/pkg/oidc"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/authz"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/token"
 	"github.com/yumemi-inc/go-oidc/pkg/urls"
@@ -153,31 +154,24 @@ func main() {
 				return err
 			}
 
-			client := clients[req.ClientID]
-			if client.RequiresSecret() && typeconv.IsEmptyOrNil(req.ClientSecret) {
-				clientID, clientSecret, ok := c.Request().BasicAuth()
-				if !ok {
-					c.Response().Header().Set(echo.HeaderWWWAuthenticate, "Basic")
-
-					return echo.ErrUnauthorized
-				}
-
-				if clientID != req.ClientID {
-					return echo.NewHTTPError(http.StatusBadRequest, "client ID mismatch")
-				}
-
-				req.ClientSecret = &clientSecret
-			}
-
 			authzRequest, ok := authorizedRequests[lo.FromPtr(req.Code)]
 			if !ok {
 				return errors.New(errors.KindInvalidGrant, "unknown authorization code")
 			}
 
-			if err := req.Validate(ctx, authzRequest, client); err != nil {
+			if err := req.Validate(
+				ctx, c.Request(), authzRequest,
+				func(ctx context.Context, id string) oidc.Client {
+					return clients[id]
+				},
+			); err != nil {
 				errResponse := *err
 				if state := authzRequest.State; state != nil {
 					errResponse = errResponse.WithState(*state)
+				}
+
+				if err.Kind == errors.KindUnauthorizedClient {
+					c.Response().Header().Set(echo.HeaderWWWAuthenticate, "Basic")
 				}
 
 				return c.JSON(http.StatusBadRequest, errResponse)
@@ -186,7 +180,7 @@ func main() {
 			res := token.Response{
 				Response: oauth2token.Response{
 					AccessToken: "token",
-					TokenType:   oauth2token.TokenTypeBearer,
+					TokenType:   oauth2token.TypeBearer,
 					ExpiresIn:   lo.ToPtr(uint(3600)),
 					Scope:       authzRequest.Scope,
 				},

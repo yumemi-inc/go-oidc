@@ -4,16 +4,13 @@ import (
 	"context"
 
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2"
+	"github.com/yumemi-inc/go-oidc/pkg/oidc"
 )
 
 type Client struct {
 	ID           string
 	Secret       string
 	RedirectURIs []string
-}
-
-func (c Client) RequiresSecret() bool {
-	return c.Secret != ""
 }
 
 func (c Client) GetID() string {
@@ -24,8 +21,12 @@ func (c Client) GetRedirectURIs() []string {
 	return c.RedirectURIs
 }
 
+func (c Client) RequiresAuthentication() bool {
+	return c.Secret != ""
+}
+
 func (c Client) Authenticate(_ context.Context, secret string) error {
-	if !c.RequiresSecret() {
+	if !c.RequiresAuthentication() {
 		return nil
 	}
 
@@ -34,4 +35,8 @@ func (c Client) Authenticate(_ context.Context, secret string) error {
 	}
 
 	return nil
+}
+
+func (c Client) AuthenticationMethod() oidc.ClientAuthenticationMethod {
+	return oidc.ClientAuthenticationMethodNone
 }

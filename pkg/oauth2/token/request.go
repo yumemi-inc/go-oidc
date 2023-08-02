@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/samber/lo"
 
@@ -26,50 +27,55 @@ const (
 	GrantTypeAuthorizationCode GrantType = "authorization_code"
 )
 
-type TokenType string
-
-const (
-	TokenTypeBearer TokenType = "bearer"
-	TokenTypeMAC    TokenType = "mac"
-)
-
 type Request struct {
 	GrantType    GrantType `form:"grant_type"`
-	ClientID     string    `form:"client_id,omitempty"`
-	ClientSecret *string   `form:"client_secret,omitempty"`
 	Code         *string   `from:"code,omitempty"`
 	RedirectURI  *string   `form:"redirect_uri,omitempty"`
+	ClientID     *string   `form:"client_id,omitempty"`
+	ClientSecret *string   `form:"client_secret,omitempty"`
 	pkce.Verifier
-}
-
-type Response struct {
-	AccessToken  string    `json:"access_token"`
-	TokenType    TokenType `json:"token_type"`
-	ExpiresIn    *uint     `json:"expires_in,omitempty"`
-	RefreshToken *string   `json:"refresh_token,omitempty"`
-	Scope        *string   `json:"scope,omitempty"`
+	// TODO: Assertions Framework
 }
 
 func (r *Request) Validate(
 	ctx context.Context,
+	httpRequest *http.Request,
 	authzRequest *authz.Request,
-	client oauth2.Client,
+	clientResolver oauth2.ClientResolver,
 ) *errors.Error {
 	switch r.GrantType {
 	case GrantTypeAuthorizationCode:
-		if typeconv.IsEmptyOrNil(r.Code) || typeconv.IsEmptyOrNil(r.RedirectURI) || lo.IsEmpty(r.ClientID) {
+		if typeconv.IsEmptyOrNil(r.Code) || typeconv.IsEmptyOrNil(r.RedirectURI) || typeconv.IsEmptyOrNil(r.ClientID) {
 			return &ErrMissingParameter
 		}
 
-		if r.ClientID != client.GetID() {
-			return &ErrClientIDMismatch
-		}
-
-		if authzRequest.RedirectURI == nil || *r.RedirectURI != *authzRequest.RedirectURI {
+		if authzRequest.RedirectURI != nil && lo.FromPtr(r.RedirectURI) != *authzRequest.RedirectURI {
 			return &ErrRedirectURIMismatch
 		}
 
-		if err := client.Authenticate(ctx, lo.FromPtr(r.ClientSecret)); err != nil {
+		client := clientResolver(ctx, authzRequest.ClientID)
+		if client == nil {
+			return &ErrClientAuthenticationFailed
+		}
+
+		clientID, clientSecret, ok := httpRequest.BasicAuth()
+		if ok {
+			if clientID != client.GetID() || clientID != authzRequest.ClientID {
+				return &ErrClientIDMismatch
+			}
+
+			if err := client.Authenticate(ctx, clientSecret); err != nil {
+				return &ErrClientAuthenticationFailed
+			}
+		} else if r.ClientID != nil && r.ClientSecret != nil {
+			if *r.ClientID != client.GetID() || *r.ClientID != authzRequest.ClientID {
+				return &ErrClientIDMismatch
+			}
+
+			if err := client.Authenticate(ctx, lo.FromPtr(r.ClientSecret)); err != nil {
+				return &ErrClientAuthenticationFailed
+			}
+		} else if client.RequiresAuthentication() {
 			return &ErrClientAuthenticationFailed
 		}
 
