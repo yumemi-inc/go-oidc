@@ -1,6 +1,11 @@
 package pkce
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
+
+	"github.com/samber/lo"
+
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2/errors"
 )
 
@@ -13,12 +18,27 @@ type Verifier struct {
 	CodeVerifier *string `form:"code_verifier,omitempty"`
 }
 
+func (v *Verifier) Transform(method CodeChallengeMethod) string {
+	switch method {
+	case CodeChallengeMethodS256:
+		digest := sha256.Sum256([]byte(lo.FromPtr(v.CodeVerifier)))
+
+		return base64.URLEncoding.EncodeToString(digest[:])
+
+	case CodeChallengeMethodPlain:
+		fallthrough
+
+	default:
+		return lo.FromPtr(v.CodeVerifier)
+	}
+}
+
 func (v *Verifier) Validate(challenge *Challenge) *errors.Error {
 	if v.CodeVerifier != nil && challenge == nil {
 		return &ErrChallengeNotFound
 	}
 
-	if verifier := challenge.Transform(); *v.CodeVerifier != verifier {
+	if codeChallenge := v.Transform(lo.FromPtr(challenge.CodeChallengeMethod)); codeChallenge != lo.FromPtr(challenge.CodeChallenge) {
 		return &ErrCodeVerifierMismatch
 	}
 

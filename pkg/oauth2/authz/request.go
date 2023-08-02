@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	ErrClientIDMismatch   = errors.New(errors.KindInvalidClient, "client ID mismatch")
-	ErrInvalidRedirectURI = errors.New(errors.KindInvalidRequest, "invalid redirect URI")
-	ErrInvalidScopeFormat = errors.New(errors.KindInvalidScope, "invalid scope format")
+	ErrClientIDMismatch        = errors.New(errors.KindInvalidClient, "client ID mismatch")
+	ErrInvalidRedirectURI      = errors.New(errors.KindInvalidRequest, "invalid redirect URI")
+	ErrInvalidScopeFormat      = errors.New(errors.KindInvalidScope, "invalid scope format")
+	ErrUnsupportedResponseType = errors.New(errors.KindUnsupportedResponseType, "unsupported response type")
 )
 
 type ResponseType string
@@ -53,6 +54,14 @@ type RequestValidateOptions struct {
 }
 
 func (r *Request) ValidateWithOptions(client oauth2.Client, options RequestValidateOptions) *errors.Error {
+	switch r.ResponseType {
+	case ResponseTypeCode, ResponseTypeToken:
+		// nothing to do
+
+	default:
+		return &ErrUnsupportedResponseType
+	}
+
 	if client.GetID() != r.ClientID {
 		return &ErrClientIDMismatch
 	}
