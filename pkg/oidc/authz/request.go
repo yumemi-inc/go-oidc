@@ -12,8 +12,12 @@ import (
 )
 
 var (
-	ErrMalformedRequest    = oauth2.ErrMalformedRequest
-	ErrOpenIDScopeRequired = errors.New(errors.KindInvalidRequest, "openid scope is required")
+	ErrClientIDMismatch        = oauth2.ErrClientIDMismatch
+	ErrInvalidRedirectURI      = oauth2.ErrInvalidRedirectURI
+	ErrInvalidScopeFormat      = oauth2.ErrInvalidScopeFormat
+	ErrMalformedRequest        = oauth2.ErrMalformedRequest
+	ErrUnsupportedResponseType = oauth2.ErrUnsupportedResponseType
+	ErrOpenIDScopeRequired     = errors.New(errors.KindInvalidRequest, "openid scope is required")
 )
 
 type Request struct {
