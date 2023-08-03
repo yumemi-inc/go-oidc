@@ -42,6 +42,10 @@ func WriteAsRedirect(err error, w http.ResponseWriter, redirectURI url.URL, stat
 	return oauth2.WriteAsRedirect(err, w, redirectURI, state)
 }
 
+func Is(err error, kind Kind) bool {
+	return oauth2.Is(err, kind)
+}
+
 func Write(err error, w http.ResponseWriter) error {
 	return oauth2.Write(err, w)
 }

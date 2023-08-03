@@ -132,6 +132,15 @@ func WriteAsRedirect(err error, w http.ResponseWriter, redirectURI url.URL, stat
 	return err
 }
 
+func Is(err error, kind Kind) bool {
+	var e *Error
+	if errors.As(err, &e) {
+		return e.Kind == kind
+	}
+
+	return false
+}
+
 func Write(err error, w http.ResponseWriter) error {
 	var e *Error
 	if errors.As(err, &e) {
