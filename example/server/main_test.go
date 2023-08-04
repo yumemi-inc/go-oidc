@@ -32,9 +32,9 @@ func Test_OpenIDConfiguration(t *testing.T) {
 
 	res := new(discovery.Metadata)
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), res))
-	assert.Equal(t, "http://localhost:1323/", res.Issuer)
-	assert.Equal(t, "http://localhost:1323/authorize", res.AuthorizationEndpoint)
-	assert.Equal(t, "http://localhost:1323/token", *res.TokenEndpoint)
+	assert.Equal(t, "http://example.com", res.Issuer)
+	assert.Equal(t, "http://example.com/authorize", res.AuthorizationEndpoint)
+	assert.Equal(t, "http://example.com/token", *res.TokenEndpoint)
 }
 
 func Test_AuthorizationCodeFlow(t *testing.T) {

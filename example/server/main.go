@@ -282,14 +282,26 @@ func app() *echo.Echo {
 	)
 
 	e.GET(
+		"/jwks.json",
+		func(c echo.Context) error {
+			return c.JSON(http.StatusOK, jwt.JWKSFromPublicKeychain(jwtKeychain))
+		},
+	)
+
+	e.GET(
 		discovery.OpenIDConfigurationPath,
 		func(c echo.Context) error {
+			issuer := url.URL{
+				Scheme: c.Scheme(),
+				Host:   c.Request().Host,
+			}
+
 			metadata := discovery.Metadata{
 				RequiredMetadata: discovery.RequiredMetadata{
-					Issuer:                           "http://localhost:1323/",
-					AuthorizationEndpoint:            "http://localhost:1323/authorize",
-					TokenEndpoint:                    lo.ToPtr("http://localhost:1323/token"),
-					JwksURI:                          "http://localhost:1323/.well-known/jwks.json",
+					Issuer:                           issuer.String(),
+					AuthorizationEndpoint:            issuer.JoinPath("/authorize").String(),
+					TokenEndpoint:                    lo.ToPtr(issuer.JoinPath("/token").String()),
+					JwksURI:                          issuer.JoinPath("/jwks.json").String(),
 					ResponseTypesSupported:           []oidc.ResponseType{oidc.ResponseTypeCode},
 					SubjectTypesSupported:            []oidc.SubjectType{oidc.SubjectTypePublic},
 					IDTokenSigningAlgValuesSupported: []jose.SignatureAlgorithm{jose.ES256},
