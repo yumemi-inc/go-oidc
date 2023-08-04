@@ -5,16 +5,17 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/samber/lo"
 	form "github.com/yumemi-inc/go-encoding-form"
 
 	"github.com/yumemi-inc/go-oidc/pkg/jwt"
-	"github.com/yumemi-inc/go-oidc/pkg/oidc"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/claim"
 )
 
 var (
-	ErrClientNotProvided = errors.New("client ID specified but not provided")
-	ErrInvalidAudience   = errors.New("invalid audience; ID token is not for the provided client")
+	ErrClientNotProvided            = errors.New("client ID specified but not provided")
+	ErrInvalidAudience              = errors.New("invalid audience; ID token is not for the provided client")
+	ErrInvalidPostLogoutRedirectURI = errors.New("invalid post logout redirect URI")
 )
 
 type Request struct {
@@ -79,12 +80,22 @@ func ReadRequest(r *http.Request) (*Request, error) {
 // Validate validates the RP-initiated logout request. OP can ignore the error(s) and continue logging out, but the
 // request that failed to validate MUST NOT be used. Also, OP MUST NOT perform post-logout redirection when any error
 // detected on validation.
-func (r *Request) Validate(client oidc.Client, keychain jwt.PublicKeychain) error {
-	if r.ClientID != nil && r.IDTokenHint != nil {
-		if client == nil {
-			return ErrClientNotProvided
-		}
+func (r *Request) Validate(client Client, keychain jwt.PublicKeychain) error {
+	if r.ClientID == nil {
+		return nil
+	}
 
+	if client == nil {
+		return ErrClientNotProvided
+	}
+
+	if r.PostLogoutRedirectURI != nil {
+		if !lo.Contains(client.GetPostLogoutRedirectURIs(), *r.PostLogoutRedirectURI) {
+			return ErrInvalidPostLogoutRedirectURI
+		}
+	}
+
+	if r.IDTokenHint != nil {
 		claims, err := claim.ClaimsFromJWT(*r.IDTokenHint, keychain)
 		if err != nil {
 			return err
