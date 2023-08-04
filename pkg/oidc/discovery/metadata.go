@@ -185,13 +185,15 @@ type OptionalMetadata struct {
 	OPTosURI *string `json:"op_tos_uri,omitempty"`
 }
 
+type EndSessionMetadata = endsession.Metadata
+
 type Metadata struct {
 	RequiredMetadata
 	RecommendedMetadata
 	OptionalMetadata
 
 	// Extensions
-	*endsession.Metadata
+	*EndSessionMetadata
 }
 
 func (m Metadata) Write(w http.ResponseWriter) error {
