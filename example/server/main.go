@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v3"
@@ -173,7 +174,7 @@ func app() *echo.Echo {
 						Write(c.Response())
 				}
 
-				if err := req.Validate(authzRequest); err != nil {
+				if err := req.Validate(authzRequest.RedirectURI, authzRequest.Challenge); err != nil {
 					return errors.Write(err, c.Response())
 				}
 
@@ -199,7 +200,12 @@ func app() *echo.Echo {
 						Write(c.Response())
 				}
 
-				if err := req.Validate(t.AuthzRequest); err != nil {
+				scopes := make([]string, 0)
+				if t.Scope != nil {
+					scopes = strings.Split(*t.Scope, " ")
+				}
+
+				if err := req.Validate(scopes); err != nil {
 					return errors.Write(err, c.Response())
 				}
 

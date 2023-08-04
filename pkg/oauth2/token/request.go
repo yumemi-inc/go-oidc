@@ -119,16 +119,19 @@ func ReadRequest(r *http.Request) (GrantRequest, error) {
 	return nil, ErrUnsupportedGrantType
 }
 
-func (r *AuthorizationCodeGrantRequest) Validate(authzRequest *authz.Request) error {
+// Validate validates the AuthorizationCodeGrantRequest against the previously requested redirectURI and optionally PKCE
+// challenge. If the redirectURI does not match AuthorizationCodeGrantRequest.RedirectURI, returns
+// ErrRedirectURIMismatch.
+func (r *AuthorizationCodeGrantRequest) Validate(redirectURI *string, challenge pkce.Challenge) error {
 	if lo.IsEmpty(r.Code) || r.RedirectURI == nil || *r.RedirectURI == "" {
 		return ErrMissingParameter
 	}
 
-	if authzRequest.RedirectURI != nil && lo.FromPtr(r.RedirectURI) != *authzRequest.RedirectURI {
+	if redirectURI != nil && lo.FromPtr(r.RedirectURI) != *redirectURI {
 		return ErrRedirectURIMismatch
 	}
 
-	if err := r.Verifier.Validate(&authzRequest.Challenge); err != nil {
+	if err := r.Verifier.Validate(&challenge); err != nil {
 		return err
 	}
 
@@ -143,12 +146,14 @@ func (r *RefreshTokenGrantRequest) Scopes() []string {
 	return strings.Split(*r.Scope, " ")
 }
 
-func (r *RefreshTokenGrantRequest) Validate(authzRequest *authz.Request) error {
+// Validate validates the RefreshTokenGrantRequest against the current scopes. If any scope(s) that is not authorized
+// currently was requested, returns ErrInsufficientScopes.
+func (r *RefreshTokenGrantRequest) Validate(scopes []string) error {
 	if lo.IsEmpty(r.RefreshToken) {
 		return ErrMissingParameter
 	}
 
-	if !lo.Every(authzRequest.Scopes(), r.Scopes()) {
+	if !lo.Every(scopes, r.Scopes()) {
 		return ErrInsufficientScopes
 	}
 

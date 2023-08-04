@@ -75,11 +75,3 @@ func (r *Request) AuthenticateClient(
 
 	return nil
 }
-
-func (r *AuthorizationCodeGrantRequest) Validate(authzRequest *authz.Request) error {
-	return r.AuthorizationCodeGrantRequest.Validate(&authzRequest.Request)
-}
-
-func (r *RefreshTokenGrantRequest) Validate(authzRequest *authz.Request) error {
-	return r.RefreshTokenGrantRequest.Validate(&authzRequest.Request)
-}
