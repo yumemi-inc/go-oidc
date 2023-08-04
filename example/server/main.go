@@ -25,6 +25,7 @@ import (
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/authz"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/claim"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/discovery"
+	"github.com/yumemi-inc/go-oidc/pkg/oidc/endsession"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/errors"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/token"
 )
@@ -237,6 +238,42 @@ func app() *echo.Echo {
 			}
 
 			return res.Write(c.Response())
+		},
+	)
+
+	e.Any(
+		"/end_session",
+		func(c echo.Context) error {
+			if c.Request().Method != http.MethodGet && c.Request().Method != http.MethodPost {
+				return echo.ErrMethodNotAllowed
+			}
+
+			req, err := endsession.ReadRequest(c.Request())
+			if err != nil {
+				// ignoring error
+				req = &endsession.Request{}
+			}
+
+			var client oidc.Client
+			if req.ClientID != nil {
+				client = clients[*req.ClientID]
+			}
+
+			if err := req.Validate(client, jwtKeychain); err != nil {
+				// ignoring error
+				req = &endsession.Request{}
+			}
+
+			// Logout
+			sess, _ := session.Get("session", c)
+			sess.Values = make(map[any]any)
+			lo.Must0(sess.Save(c.Request(), c.Response()))
+
+			if req.PostLogoutRedirectURI != nil {
+				return c.Redirect(http.StatusFound, *req.PostLogoutRedirectURI)
+			}
+
+			return c.NoContent(http.StatusNoContent)
 		},
 	)
 

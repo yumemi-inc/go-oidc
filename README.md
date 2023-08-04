@@ -23,7 +23,7 @@ Low-level and strongly typed library for OpenID Connect / OAuth 2.0 client or se
   - [ ] Assertion Framework for OAuth 2.0 Client Authentication and
     Authorization Grants
 
-### OpenID Connect
+### OpenID Connect 1.0
 
 - Authentication Flows
   - [x] Authorization Code Flow
@@ -61,6 +61,9 @@ Low-level and strongly typed library for OpenID Connect / OAuth 2.0 client or se
   - OpenID Connect Discovery
     - [ ] WebFinger
     - [x] Provider Metadata
+  - [x] OpenID Connect RP-Initiated Logout
+  - [ ] OpenID Connect Front-Channel Logout
+  - [ ] OpenID Connect Back-Channel Logout
   - [ ] OpenID Connect Dynamic Client Registration
   - [ ] OpenID Connect Session Management
   - [ ] OpenID Provider Authentication Policy Extension

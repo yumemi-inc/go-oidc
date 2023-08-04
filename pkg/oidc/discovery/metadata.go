@@ -8,6 +8,7 @@ import (
 
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc"
+	endsession "github.com/yumemi-inc/go-oidc/pkg/oidc/endsession/discovery"
 )
 
 const (
@@ -188,6 +189,9 @@ type Metadata struct {
 	RequiredMetadata
 	RecommendedMetadata
 	OptionalMetadata
+
+	// Extensions
+	*endsession.Metadata
 }
 
 func (m Metadata) Write(w http.ResponseWriter) error {

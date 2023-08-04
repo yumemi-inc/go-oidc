@@ -95,6 +95,16 @@ func NewAud(s []string) *Aud {
 	return lo.ToPtr[Aud](s)
 }
 
+func (c Aud) Contains(audience string) bool {
+	for _, a := range c {
+		if a == audience {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (c Aud) ClaimName() string {
 	return "aud"
 }
