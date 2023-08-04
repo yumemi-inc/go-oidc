@@ -22,12 +22,15 @@ type Keypair interface {
 }
 
 type PublicKeychain interface {
+	PublicKeys() []PublicKey
 	PublicKey(id string) PublicKey
 }
 
 type Keychain interface {
 	PublicKeychain
 
+	Keypairs() []Keypair
 	Keypair(id string) Keypair
+	PrivateKeys() []PrivateKey
 	PrivateKey(id string) PrivateKey
 }
