@@ -44,6 +44,11 @@ func ReadRequest(r *http.Request) (*Request, error) {
 }
 
 func (r *Request) Validate(client oidc.Client) error {
+	// redirect_uri is optional in OAuth 2.0 but required in OIDC.
+	if r.RedirectURI == nil || *r.RedirectURI == "" {
+		return ErrInvalidRedirectURI
+	}
+
 	if err := r.Request.Validate(client); err != nil {
 		return err
 	}
