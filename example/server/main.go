@@ -178,8 +178,7 @@ func app() *echo.Echo {
 					return errors.Write(err, c.Response())
 				}
 
-				claims := claim.
-					NewClaims().
+				claims := claim.NewClaims().
 					With(lo.Must(claim.IssFromStr("https://id.example.com/"))).
 					With(claim.Aud{authzRequest.ClientID}).
 					With(claim.Sub("user1"))

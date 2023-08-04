@@ -1,12 +1,10 @@
 package claim
 
 import (
-	"net/url"
 	"strings"
 	"testing"
 
 	"github.com/go-jose/go-jose/v3"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,9 +21,9 @@ func TestClaims_SignJWT_ClaimsFromJWT(t *testing.T) {
 	chain.Add(keypair)
 
 	claims := NewClaims().
-		With(lo.Must(IssFromStr("https://id.example.com/"))).
-		With(lo.Must(NewSub("user1"))).
-		With(NewAud([]string{"client1"}))
+		With(Iss("https://id.example.com/")).
+		With(Sub("user1")).
+		With(Aud([]string{"client1"}))
 
 	jwtString, err := claims.SignJWT(keypair)
 	require.NoError(t, err)
@@ -36,8 +34,7 @@ func TestClaims_SignJWT_ClaimsFromJWT(t *testing.T) {
 	claims, err = ClaimsFromJWT(jwtString, chain)
 	require.NoError(t, err)
 
-	iss := url.URL(claims["iss"].(Iss))
-	require.Equal(t, "https://id.example.com/", iss.String())
+	require.Equal(t, Iss("https://id.example.com/"), claims["iss"].(Iss))
 	require.Equal(t, Aud([]string{"client1"}), claims["aud"].(Aud))
 	require.Equal(t, Sub("user1"), claims["sub"].(Sub))
 }

@@ -8,11 +8,152 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+
+	"github.com/yumemi-inc/go-oidc/pkg/jwt/claim"
+)
+
+const (
+	SubMaxLength = 255
 )
 
 var (
+	ErrIssScheme          = errors.New("scheme of issuer URL must be https")
+	ErrIssQueryOrFragment = errors.New("issuer URL must not have query or fragment")
+	ErrSubLength          = errors.New("subject must not exceed 255 ASCII characters in length")
 	ErrBirthdateMalformed = errors.New("malformed birthdate")
 )
+
+type Aud = claim.Aud
+type Exp = claim.Exp
+type Iat = claim.Iat
+
+// Iss is the identifier for the issuer.
+type Iss url.URL
+
+func NewIss(u url.URL) (*Iss, error) {
+	if u.Scheme != "https" {
+		return nil, ErrIssScheme
+	}
+
+	if u.RawQuery != "" || u.RawFragment != "" {
+		return nil, ErrIssQueryOrFragment
+	}
+
+	return lo.ToPtr(Iss(u)), nil
+}
+
+func IssFromStr(s string) (*Iss, error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewIss(*u)
+}
+
+func (c Iss) ClaimName() string {
+	return "iss"
+}
+
+func (c Iss) String() string {
+	u := url.URL(c)
+
+	return u.String()
+}
+
+func (c Iss) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.String())
+}
+
+func (c *Iss) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	p, err := IssFromStr(s)
+	if err != nil {
+		return err
+	}
+
+	*c = *p
+
+	return nil
+}
+
+// Sub is the subject identifier.
+type Sub string
+
+func NewSub(s string) (*Sub, error) {
+	if len(s) > SubMaxLength {
+		return nil, ErrSubLength
+	}
+
+	return lo.ToPtr(Sub(s)), nil
+}
+
+func (c Sub) ClaimName() string {
+	return "sub"
+}
+
+// AuthTime is the time when the end-user authentication occurred.
+type AuthTime time.Time
+
+func NewAuthTime(t time.Time) *AuthTime {
+	return lo.ToPtr(AuthTime(t))
+}
+
+func AuthTimeFromInt64(i int64) *AuthTime {
+	return NewAuthTime(time.Unix(i, 0))
+}
+
+func (c AuthTime) ClaimName() string {
+	return "auth_time"
+}
+
+// Nonce is a string value used to associate a client session with the token, and to mitigate replay attacks.
+type Nonce string
+
+func NewNonce(s string) *Nonce {
+	return lo.ToPtr(Nonce(s))
+}
+
+func (c Nonce) ClaimName() string {
+	return "nonce"
+}
+
+// Acr is the authentication context class reference.
+type Acr string
+
+func NewAcr(s string) *Acr {
+	return lo.ToPtr(Acr(s))
+}
+
+func (c Acr) ClaimName() string {
+	return "acr"
+}
+
+// Amr is the authentication methods references.
+type Amr []string
+
+func NewAmr(s []string) *Amr {
+	return lo.ToPtr[Amr](s)
+}
+
+func (c Amr) ClaimName() string {
+	return "amr"
+}
+
+// Azp is the authorized party - the party to which the token was issued.
+type Azp string
+
+func NewAzp(s string) *Azp {
+	return lo.ToPtr(Azp(s))
+}
+
+func (c Azp) ClaimName() string {
+	return "azp"
+}
 
 // Name is End-User's full name in displayable form including all name parts, possibly including titles and
 // suffixes, ordered according to the End-User's locale and preferences.
