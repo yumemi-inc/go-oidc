@@ -58,6 +58,8 @@ type Request struct {
 	// (without a region designation). An error SHOULD NOT result if some or all of the requested locales are not
 	// supported by the OpenID Provider.
 	UILocales *string `form:"ui_locales,omitempty"`
+
+	claims claim.Claims
 }
 
 // ReadRequest reads RP-initiated logout request from the HTTP request.
@@ -75,6 +77,26 @@ func ReadRequest(r *http.Request) (*Request, error) {
 	}
 
 	return req, nil
+}
+
+// Claims decodes and verifies claims in the ID token using the keychain.
+func (r *Request) Claims(keychain jwt.PublicKeychain) (claim.Claims, error) {
+	if r.claims != nil {
+		return r.claims, nil
+	}
+
+	if r.IDTokenHint == nil {
+		return nil, nil
+	}
+
+	claims, err := claim.ClaimsFromJWT(*r.IDTokenHint, keychain)
+	if err != nil {
+		return nil, err
+	}
+
+	r.claims = claims
+
+	return claims, nil
 }
 
 // Validate validates the RP-initiated logout request. OP can ignore the error(s) and continue logging out, but the
@@ -96,7 +118,7 @@ func (r *Request) Validate(client Client, keychain jwt.PublicKeychain) error {
 	}
 
 	if r.IDTokenHint != nil {
-		claims, err := claim.ClaimsFromJWT(*r.IDTokenHint, keychain)
+		claims, err := r.Claims(keychain)
 		if err != nil {
 			return err
 		}
