@@ -46,6 +46,9 @@ var clients = map[string]Client{
 		RedirectURIs: []string{
 			"https://client1.example.com/callback",
 		},
+		PostLogoutRedirectURIs: []string{
+			"https://client1.example.com/end_session_callback",
+		},
 	},
 }
 
@@ -254,7 +257,7 @@ func app() *echo.Echo {
 				req = &endsession.Request{}
 			}
 
-			var client oidc.Client
+			var client endsession.Client
 			if req.ClientID != nil {
 				client = clients[*req.ClientID]
 			}

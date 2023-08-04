@@ -8,9 +8,10 @@ import (
 )
 
 type Client struct {
-	ID           string
-	Secret       string
-	RedirectURIs []string
+	ID                     string
+	Secret                 string
+	RedirectURIs           []string
+	PostLogoutRedirectURIs []string
 }
 
 func (c Client) Type() oauth2.ClientType {
@@ -27,6 +28,10 @@ func (c Client) GetID() string {
 
 func (c Client) GetRedirectURIs() []string {
 	return c.RedirectURIs
+}
+
+func (c Client) GetPostLogoutRedirectURIs() []string {
+	return c.PostLogoutRedirectURIs
 }
 
 func (c Client) Authenticate(_ context.Context, secret string) error {
