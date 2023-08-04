@@ -44,6 +44,15 @@ func (c Claims) With(claim Claim) Claims {
 	return c
 }
 
+// Merge adds all values from another claims bag.
+func (c Claims) Merge(claims Claims) Claims {
+	for name, value := range claims {
+		c[name] = value
+	}
+
+	return c
+}
+
 // Clone clones the claims bag.
 func (c Claims) Clone() Claims {
 	claims := NewClaims()
