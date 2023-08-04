@@ -17,6 +17,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/samber/lo"
 
+	"github.com/yumemi-inc/go-oidc/pkg/jwt"
 	"github.com/yumemi-inc/go-oidc/pkg/jwt/keychain"
 	"github.com/yumemi-inc/go-oidc/pkg/jwt/keys"
 	oauth2errors "github.com/yumemi-inc/go-oidc/pkg/oauth2/errors"
@@ -69,7 +70,7 @@ func init() {
 }
 
 func app() *echo.Echo {
-	keypair := lo.Must(keys.GenerateECDSAKeypair())
+	keypair := lo.Must(keys.GenerateECDSAKeypair(jose.ES256, jwt.UseSignature))
 	jwtKeychain := keychain.New()
 	jwtKeychain.Add(keypair)
 
@@ -215,7 +216,7 @@ func app() *echo.Echo {
 				panic("not implemented")
 			}
 
-			idToken, err := currentToken.Claims.SignJWT(keypair, jose.ES256)
+			idToken, err := currentToken.Claims.SignJWT(keypair)
 			if err != nil {
 				return err
 			}

@@ -11,46 +11,29 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/yumemi-inc/go-oidc/pkg/jwt"
+	"github.com/yumemi-inc/go-oidc/pkg/jwt/keychain"
 	"github.com/yumemi-inc/go-oidc/pkg/jwt/keys"
 )
 
-type keychain struct {
-	publicKeys map[string]jwt.PublicKey
-}
-
-func newKeychain() keychain {
-	return keychain{
-		publicKeys: make(map[string]jwt.PublicKey),
-	}
-}
-
-func (k keychain) Add(key jwt.PublicKey) {
-	k.publicKeys[key.KeyID()] = key
-}
-
-func (k keychain) PublicKey(id string) jwt.PublicKey {
-	return k.publicKeys[id]
-}
-
 func TestClaims_SignJWT_ClaimsFromJWT(t *testing.T) {
-	keypair, err := keys.GenerateECDSAKeypair()
+	keypair, err := keys.GenerateECDSAKeypair(jose.ES512, jwt.UseSignature)
 	require.NoError(t, err)
 
-	keychain := newKeychain()
-	keychain.Add(keypair)
+	chain := keychain.New()
+	chain.Add(keypair)
 
 	claims := NewClaims().
 		With(lo.Must(IssFromStr("https://id.example.com/"))).
 		With(lo.Must(NewSub("user1"))).
 		With(NewAud([]string{"client1"}))
 
-	jwtString, err := claims.SignJWT(keypair, jose.ES256)
+	jwtString, err := claims.SignJWT(keypair)
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, strings.Count(jwtString, "."))
 	assert.True(t, strings.HasPrefix(jwtString, "eyJ"))
 
-	claims, err = ClaimsFromJWT(jwtString, keychain)
+	claims, err = ClaimsFromJWT(jwtString, chain)
 	require.NoError(t, err)
 
 	iss := url.URL(claims["iss"].(Iss))

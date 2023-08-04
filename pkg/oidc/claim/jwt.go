@@ -49,7 +49,7 @@ func UnsafeDecodeClaimsFromJWT(jwt string) (Claims, error) {
 	return UnmarshalAll(values)
 }
 
-func (c Claims) SignJWT(key jwt.PrivateKey, algorithm jose.SignatureAlgorithm) (string, error) {
+func (c Claims) SignJWT(key jwt.PrivateKey) (string, error) {
 	bytes, err := c.MarshalJSON()
 	if err != nil {
 		return "", err
@@ -57,12 +57,8 @@ func (c Claims) SignJWT(key jwt.PrivateKey, algorithm jose.SignatureAlgorithm) (
 
 	signer, err := jose.NewSigner(
 		jose.SigningKey{
-			Algorithm: algorithm,
-			Key: jose.JSONWebKey{
-				Key:       key.PrivateKey(),
-				KeyID:     key.KeyID(),
-				Algorithm: string(jose.ES256),
-			},
+			Algorithm: key.Algorithm(),
+			Key:       jwt.JWKFromPrivateKey(key),
 		},
 		nil,
 	)
