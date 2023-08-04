@@ -1,6 +1,7 @@
 package claim
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/samber/lo"
@@ -68,6 +69,26 @@ func ExpFromInt64(i int64) *Exp {
 	return NewExp(time.Unix(i, 0))
 }
 
+func (c Exp) Int64() int64 {
+	return time.Time(c).Unix()
+}
+
+func (c Exp) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.Int64())
+}
+
+func (c *Exp) UnmarshalJSON(data []byte) error {
+	var i int64
+	if err := json.Unmarshal(data, &i); err != nil {
+		return err
+	}
+
+	e := ExpFromInt64(i)
+	*c = *e
+
+	return nil
+}
+
 func (c Exp) ClaimName() string {
 	return "exp"
 }
@@ -81,6 +102,26 @@ func NewIat(t time.Time) *Iat {
 
 func IatFromInt64(i int64) *Iat {
 	return NewIat(time.Unix(i, 0))
+}
+
+func (c Iat) Int64() int64 {
+	return time.Time(c).Unix()
+}
+
+func (c Iat) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.Int64())
+}
+
+func (c *Iat) UnmarshalJSON(data []byte) error {
+	var i int64
+	if err := json.Unmarshal(data, &i); err != nil {
+		return err
+	}
+
+	e := IatFromInt64(i)
+	*c = *e
+
+	return nil
 }
 
 func (c Iat) ClaimName() string {
