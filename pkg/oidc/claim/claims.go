@@ -107,8 +107,28 @@ func AuthTimeFromInt64(i int64) *AuthTime {
 	return NewAuthTime(time.Unix(i, 0))
 }
 
+func (c AuthTime) Int64() int64 {
+	return time.Time(c).Unix()
+}
+
 func (c AuthTime) ClaimName() string {
 	return "auth_time"
+}
+
+func (c AuthTime) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.Int64())
+}
+
+func (c *AuthTime) UnmarshalJSON(data []byte) error {
+	var i int64
+	if err := json.Unmarshal(data, &i); err != nil {
+		return err
+	}
+
+	p := AuthTimeFromInt64(i)
+	*c = *p
+
+	return nil
 }
 
 // Nonce is a string value used to associate a client session with the token, and to mitigate replay attacks.
