@@ -66,3 +66,19 @@ func (c Claims) Clone() Claims {
 func (c Claims) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]Claim(c))
 }
+
+func (c *Claims) UnmarshalJSON(data []byte) error {
+	values := make(map[string]json.RawMessage)
+	if err := json.Unmarshal(data, &values); err != nil {
+		return err
+	}
+
+	claims, err := DefaultRegistry.UnmarshalAll(values)
+	if err != nil {
+		return err
+	}
+
+	*c = claims
+
+	return nil
+}
