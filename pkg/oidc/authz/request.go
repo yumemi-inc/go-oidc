@@ -20,10 +20,24 @@ var (
 	ErrOpenIDScopeRequired     = errors.New(errors.KindInvalidRequest, "openid scope is required")
 )
 
+var claimScopes = []string{oidc.ScopeProfile, oidc.ScopeEmail, oidc.ScopeAddress, oidc.ScopePhone}
+
+type ClaimRequest struct {
+	Essential *bool `json:"essential,omitempty"`
+	Value     any   `json:"value,omitempty"`
+	Values    []any `json:"values,omitempty"`
+}
+
+type ClaimRequests struct {
+	Userinfo map[string]*ClaimRequest `json:"userinfo,omitempty"`
+	IDToken  map[string]*ClaimRequest `json:"id_token,omitempty"`
+}
+
 type Request struct {
 	oauth2.Request
 
 	ResponseMode *oidc.ResponseMode `form:"response_mode"`
+	Claims       *ClaimRequests     `form:"claims"`
 	Nonce        *string            `form:"nonce"`
 	Display      *oidc.Display      `form:"display"`
 	Prompt       *oidc.Prompt       `form:"prompt"`
@@ -58,4 +72,41 @@ func (r *Request) Validate(client oidc.Client) error {
 	}
 
 	return nil
+}
+
+// RequestedUserinfoClaims returns a set of claim names that the client requested by claims parameter or scopes.
+// The claims requested by scopes are included only if the response_type is NOT id_token.
+func (r *Request) RequestedUserinfoClaims() []string {
+	claims := make([]string, 0)
+
+	if r.ResponseType != oidc.ResponseTypeIDToken {
+		claims = append(claims, lo.Intersect(claimScopes, r.Scopes())...)
+	}
+
+	for c := range r.Claims.Userinfo {
+		claims = append(claims, c)
+	}
+
+	return lo.Uniq(claims)
+}
+
+// RequestedIDTokenClaims returns a set of claim names that the client requested by claims parameter or scopes.
+// The claims requested by scopes are included only if the response_type is id_token.
+func (r *Request) RequestedIDTokenClaims() []string {
+	claims := make([]string, 0)
+
+	if r.ResponseType == oidc.ResponseTypeIDToken {
+		claims = append(claims, lo.Intersect(claimScopes, r.Scopes())...)
+	}
+
+	for c := range r.Claims.IDToken {
+		claims = append(claims, c)
+	}
+
+	return lo.Uniq(claims)
+}
+
+// RequestedClaims returns a set of all claim names that the client requested by claims parameter or scopes.
+func (r *Request) RequestedClaims() []string {
+	return lo.Uniq(append(r.RequestedUserinfoClaims(), r.RequestedIDTokenClaims()...))
 }
