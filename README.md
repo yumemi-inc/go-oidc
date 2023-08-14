@@ -32,7 +32,7 @@ Low-level and strongly typed library for OpenID Connect / OAuth 2.0 client or se
 - Claims
   - [x] Standard Claims
   - [x] Claims Languages and Scripts
-  - [ ] Userinfo Endpoint
+  - [x] Userinfo Endpoint
   - [x] Requesting Claims using Scope Values
   - [x] Requesting Claims using the "claims" Request Parameter
   - Claim Types
