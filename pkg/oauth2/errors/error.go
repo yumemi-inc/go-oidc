@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/labstack/echo/v4"
 	form "github.com/yumemi-inc/go-encoding-form"
 )
 
@@ -90,7 +89,7 @@ func (e *Error) Write(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 
 	if e.Kind == KindUnauthorizedClient {
-		w.Header().Set(echo.HeaderWWWAuthenticate, "Basic")
+		w.Header().Set("WWW-Authenticate", "Basic")
 	}
 
 	w.WriteHeader(http.StatusBadRequest)
