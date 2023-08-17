@@ -50,7 +50,7 @@ Low-level and strongly typed library for OpenID Connect / OAuth 2.0 client or se
   - [x] none
 - Signatures and Encryption
   - [x] Signing
-  - [ ] Encryption
+  - [x] Encryption
 - Misc
   - [ ] Initiating Login from a Third Party
   - [ ] Self-Issued OpenID Provider

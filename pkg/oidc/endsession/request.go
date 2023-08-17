@@ -89,7 +89,7 @@ func (r *Request) Claims(keychain jwt.PublicKeychain) (claim.Claims, error) {
 		return nil, nil
 	}
 
-	claims, err := claim.ClaimsFromJWT(*r.IDTokenHint, keychain)
+	claims, err := claim.ClaimsFromSignedJWT(*r.IDTokenHint, keychain)
 	if err != nil {
 		return nil, err
 	}

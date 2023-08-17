@@ -17,7 +17,7 @@ func (r *Response) Write(w http.ResponseWriter) error {
 	return json.NewEncoder(w).Encode(r)
 }
 
-func (r *Response) WriteAsSignedJWT(w http.ResponseWriter, key jwt.PrivateKey) error {
+func (r *Response) WriteAsSignedJWT(w http.ResponseWriter, key jwt.PrivateSigningKey) error {
 	w.Header().Set("Content-Type", "application/jwt")
 	w.WriteHeader(http.StatusOK)
 

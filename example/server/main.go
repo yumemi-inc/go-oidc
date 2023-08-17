@@ -71,7 +71,7 @@ func init() {
 }
 
 func app() *echo.Echo {
-	keypair := lo.Must(keys.GenerateECDSAKeypair(jose.ES256, jwt.UseSignature))
+	keypair := lo.Must(keys.GenerateECDSAKeypair(jose.ES256))
 	jwtKeychain := keychain.New()
 	jwtKeychain.Add(keypair)
 
