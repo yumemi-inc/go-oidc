@@ -21,11 +21,11 @@ var (
 )
 
 type Request struct {
-	ResponseType oauth2.ResponseType `form:"response_type"`
-	ClientID     string              `form:"client_id"`
-	RedirectURI  *string             `form:"redirect_uri,omitempty"`
-	Scope        *string             `form:"scope,omitempty"`
-	State        *string             `form:"state,omitempty"`
+	ResponseType oauth2.ResponseType `form:"response_type" json:"response_type"`
+	ClientID     string              `form:"client_id" json:"client_id"`
+	RedirectURI  *string             `form:"redirect_uri,omitempty" json:"redirect_uri"`
+	Scope        *string             `form:"scope,omitempty" json:"scope"`
+	State        *string             `form:"state,omitempty" json:"state"`
 	pkce.Challenge
 }
 

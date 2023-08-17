@@ -41,7 +41,7 @@ Low-level and strongly typed library for OpenID Connect / OAuth 2.0 client or se
     - [ ] Distributed Claims
 - Passing Request Parameters as JWTs
   - [x] Passing a Request Object by Value (request)
-  - [ ] Passing a Request Object by Reference (request_uri)
+  - [x] Passing a Request Object by Reference (request_uri)
 - Client Authentication
   - [x] client_secret_basic
   - [x] client_secret_post

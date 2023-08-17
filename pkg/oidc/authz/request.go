@@ -1,7 +1,10 @@
 package authz
 
 import (
+	"context"
+	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/samber/lo"
 	form "github.com/yumemi-inc/go-encoding-form"
@@ -48,7 +51,8 @@ type Request struct {
 	LoginHint    *string            `form:"login_hint" json:"login_hint"`
 	ACRValues    *string            `form:"acr_values" json:"acr_values"`
 
-	RequestJWT *string `form:"request"`
+	RequestJWT *string `form:"request" json:"-"`
+	RequestURI *string `form:"request_uri" json:"-"`
 }
 
 func ReadRequest(r *http.Request) (*Request, error) {
@@ -60,14 +64,116 @@ func ReadRequest(r *http.Request) (*Request, error) {
 	return req, nil
 }
 
-// ExtractSignedRequestJWT extracts request parameters from the signed JWT of a request object at `request` parameter,
-// superseding other parameters currently set. If `request` parameter is not provided, it does nothing.
-func (r *Request) ExtractSignedRequestJWT(keychain jwt.PublicKeychain) error {
+// ExtractSignedJWT extracts request parameters from the signed JWT of a request object, superseding other parameters
+// currently set. It also verifies the signed JWT, finding the appropriate key from the keychain.
+func (r *Request) ExtractSignedJWT(jwtString string, keychain jwt.PublicKeychain) error {
+	if r == nil {
+		return nil
+	}
+
+	return jwt.Verify(jwtString, r, keychain)
+}
+
+// ExtractEncryptedJWT extracts request parameters from the encrypted JWT of a request object, superseding other
+// parameters currently set. It also decrypts the encrypted JWT, finding the appropriate key from the keychain.
+func (r *Request) ExtractEncryptedJWT(jwtString string, keychain jwt.Keychain) error {
+	if r == nil {
+		return nil
+	}
+
+	return jwt.Decrypt(jwtString, r, keychain)
+}
+
+// ExtractSignedRequestObject extracts request parameters from the signed JWT of a request object at `request`
+// parameter, superseding other parameters currently set. If `request` parameter is not provided, it does nothing.
+// It also verifies the signed JWT, finding the appropriate key from the keychain.
+func (r *Request) ExtractSignedRequestObject(keychain jwt.PublicKeychain) error {
 	if r == nil || r.RequestJWT == nil {
 		return nil
 	}
 
-	return jwt.Verify(*r.RequestJWT, r, keychain)
+	return r.ExtractSignedJWT(*r.RequestJWT, keychain)
+}
+
+// ExtractEncryptedRequestObject extracts request parameters from the encrypted JWT of a request object at `request`
+// parameter, superseding other parameters currently set. If `request` parameter is not provided, it does nothing.
+// It also decrypts the encrypted JWT, finding the appropriate key from the keychain.
+func (r *Request) ExtractEncryptedRequestObject(keychain jwt.Keychain) error {
+	if r == nil || r.RequestJWT == nil {
+		return nil
+	}
+
+	return r.ExtractEncryptedJWT(*r.RequestJWT, keychain)
+}
+
+// RetrieveJWT retrieves a signed or encrypted JWT of a request object from the URI specified at `request_uri`
+// parameter.
+func (r *Request) RetrieveJWT(ctx context.Context, transport http.RoundTripper) (string, error) {
+	if r == nil || r.RequestURI == nil {
+		return "", nil
+	}
+
+	u, err := url.Parse(*r.RequestURI)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return "", err
+	}
+
+	res, err := transport.RoundTrip(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	bytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes), nil
+}
+
+// RetrieveSignedRequestObject retrieves a signed JWT of a request object from the URI specified at `request_uri`
+// parameter, and extracts it superseding other parameters currently set. If `request_uri` parameter is not provided, it
+// does nothing. It also verifies the signed JWT, finding the appropriate key from the keychain.
+func (r *Request) RetrieveSignedRequestObject(
+	ctx context.Context,
+	transport http.RoundTripper,
+	keychain jwt.PublicKeychain,
+) error {
+	jwtString, err := r.RetrieveJWT(ctx, transport)
+	if err != nil {
+		return err
+	} else if jwtString == "" {
+		return nil
+	}
+
+	return r.ExtractSignedJWT(jwtString, keychain)
+}
+
+// RetrieveEncryptedRequestObject retrieves an encrypted JWT of a request object from the URI specified at `request_uri`
+// parameter, and extracts it superseding other parameters currently set. If `request_uri` parameter is not provided, it
+// does nothing. It also decrypts the encrypted JWT, finding the appropriate key from the keychain.
+func (r *Request) RetrieveEncryptedRequestObject(
+	ctx context.Context,
+	transport http.RoundTripper,
+	keychain jwt.Keychain,
+) error {
+	jwtString, err := r.RetrieveJWT(ctx, transport)
+	if err != nil {
+		return err
+	} else if jwtString == "" {
+		return nil
+	}
+
+	return r.ExtractEncryptedJWT(jwtString, keychain)
 }
 
 func (r *Request) Validate(client oidc.Client) error {

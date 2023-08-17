@@ -1,9 +1,11 @@
 package authz
 
 import (
+	"context"
 	"crypto/rsa"
 	"encoding/base64"
 	"math/big"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -17,7 +19,9 @@ import (
 	"github.com/yumemi-inc/go-oidc/pkg/oidc"
 )
 
-func TestRequest_ExtractSignedRequestJWT(t *testing.T) {
+func newKeychain(t *testing.T) *keychain.PublicKeychain {
+	t.Helper()
+
 	nBytes, err := base64.RawURLEncoding.DecodeString(
 		strings.NewReplacer("\t", "", "\n", "").Replace(
 			`
@@ -47,6 +51,12 @@ func TestRequest_ExtractSignedRequestJWT(t *testing.T) {
 			jose.RSA_OAEP_256,
 		),
 	)
+
+	return chain
+}
+
+func TestRequest_ExtractSignedRequestObject(t *testing.T) {
+	chain := newKeychain(t)
 
 	uri := `
 		/authorize
@@ -84,7 +94,97 @@ func TestRequest_ExtractSignedRequestJWT(t *testing.T) {
 	request, err := ReadRequest(httpRequest)
 	require.NoError(t, err)
 
-	err = request.ExtractSignedRequestJWT(chain)
+	err = request.ExtractSignedRequestObject(chain)
+	require.NoError(t, err)
+
+	assert.Equal(t, oidc.ResponseTypeCodeIDToken, request.ResponseType)
+	assert.Equal(t, "s6BhdRkqt3", request.ClientID)
+	assert.Equal(t, "https://client.example.org/cb", *request.RedirectURI)
+	assert.Equal(t, []string{oidc.ScopeOpenID}, request.Scopes())
+	assert.Equal(t, "af0ifjsldkj", *request.State)
+	assert.Equal(t, "n-0S6_WzA2Mj", *request.Nonce)
+	assert.Equal(t, int64(86400), *request.MaxAge)
+	assert.True(t, *request.Claims.Userinfo["given_name"].Essential)
+	assert.Nil(t, request.Claims.Userinfo["nickname"])
+	assert.True(t, *request.Claims.Userinfo["email"].Essential)
+	assert.True(t, *request.Claims.Userinfo["email_verified"].Essential)
+	assert.Nil(t, request.Claims.Userinfo["picture"])
+	assert.Nil(t, request.Claims.IDToken["gender"])
+	assert.True(t, *request.Claims.IDToken["birthdate"].Essential)
+	assert.Equal(t, "urn:mace:incommon:iap:silver", request.Claims.IDToken["acr"].Values[0])
+}
+
+type mockTransport struct {
+	t                  *testing.T
+	expectedMethod     string
+	expectedRequestURI string
+	responseBody       []byte
+}
+
+func (m mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t := m.t
+
+	assert.Equal(t, m.expectedMethod, req.Method)
+	assert.Equal(t, m.expectedRequestURI, req.URL.String())
+
+	rec := httptest.NewRecorder()
+	_, err := rec.Body.Write(m.responseBody)
+	require.NoError(t, err)
+
+	return rec.Result(), nil
+}
+
+func TestRequest_RetrieveSignedRequestObject(t *testing.T) {
+	chain := newKeychain(t)
+
+	uri := `
+		https://server.example.com/authorize
+			?response_type=code%20id_token
+			&client_id=s6BhdRkqt3
+			&request_uri=https%3A%2F%2Fclient.example.org%2Frequest.jwt
+			%23GkurKxf5T0Y-mnPFCHqWOMiZi4VS138cQO_V7PZHAdM
+			&state=af0ifjsldkj&nonce=n-0S6_WzA2Mj
+			&scope=openid`
+
+	uri = strings.NewReplacer("\t", "", "\n", "").Replace(uri)
+	httpRequest := httptest.NewRequest("GET", uri, nil)
+
+	request, err := ReadRequest(httpRequest)
+	require.NoError(t, err)
+
+	jwtString := `
+		eyJhbGciOiJSUzI1NiIsImtpZCI6ImsyYmRjIn0.ew0KICJpc3MiOiA
+		iczZCaGRSa3F0MyIsDQogImF1ZCI6ICJodHRwczovL3NlcnZlci5leGFtcGxlLmN
+		vbSIsDQogInJlc3BvbnNlX3R5cGUiOiAiY29kZSBpZF90b2tlbiIsDQogImNsaWV
+		udF9pZCI6ICJzNkJoZFJrcXQzIiwNCiAicmVkaXJlY3RfdXJpIjogImh0dHBzOi8
+		vY2xpZW50LmV4YW1wbGUub3JnL2NiIiwNCiAic2NvcGUiOiAib3BlbmlkIiwNCiA
+		ic3RhdGUiOiAiYWYwaWZqc2xka2oiLA0KICJub25jZSI6ICJuLTBTNl9XekEyTWo
+		iLA0KICJtYXhfYWdlIjogODY0MDAsDQogImNsYWltcyI6IA0KICB7DQogICAidXN
+		lcmluZm8iOiANCiAgICB7DQogICAgICJnaXZlbl9uYW1lIjogeyJlc3NlbnRpYWw
+		iOiB0cnVlfSwNCiAgICAgIm5pY2tuYW1lIjogbnVsbCwNCiAgICAgImVtYWlsIjo
+		geyJlc3NlbnRpYWwiOiB0cnVlfSwNCiAgICAgImVtYWlsX3ZlcmlmaWVkIjogeyJ
+		lc3NlbnRpYWwiOiB0cnVlfSwNCiAgICAgInBpY3R1cmUiOiBudWxsDQogICAgfSw
+		NCiAgICJpZF90b2tlbiI6IA0KICAgIHsNCiAgICAgImdlbmRlciI6IG51bGwsDQo
+		gICAgICJiaXJ0aGRhdGUiOiB7ImVzc2VudGlhbCI6IHRydWV9LA0KICAgICAiYWN
+		yIjogeyJ2YWx1ZXMiOiBbInVybjptYWNlOmluY29tbW9uOmlhcDpzaWx2ZXIiXX0
+		NCiAgICB9DQogIH0NCn0.nwwnNsk1-ZkbmnvsF6zTHm8CHERFMGQPhos-EJcaH4H
+		h-sMgk8ePrGhw_trPYs8KQxsn6R9Emo_wHwajyFKzuMXZFSZ3p6Mb8dkxtVyjoy2
+		GIzvuJT_u7PkY2t8QU9hjBcHs68PkgjDVTrG1uRTx0GxFbuPbj96tVuj11pTnmFC
+		UR6IEOXKYr7iGOCRB3btfJhM0_AKQUfqKnRlrRscc8Kol-cSLWoYE9l5QqholImz
+		jT_cMnNIznW9E7CDyWXTsO70xnB4SkG6pXfLSjLLlxmPGiyon_-Te111V8uE83Il
+		zCYIb_NMXvtTIVc1jpspnTSD7xMbpL-2QgwUsAlMGzw
+	`
+
+	err = request.RetrieveSignedRequestObject(
+		context.Background(),
+		mockTransport{
+			t:                  t,
+			expectedMethod:     http.MethodGet,
+			expectedRequestURI: "https://client.example.org/request.jwt#GkurKxf5T0Y-mnPFCHqWOMiZi4VS138cQO_V7PZHAdM",
+			responseBody:       []byte(strings.NewReplacer("\t", "", "\n", "").Replace(jwtString)),
+		},
+		chain,
+	)
 	require.NoError(t, err)
 
 	assert.Equal(t, oidc.ResponseTypeCodeIDToken, request.ResponseType)
