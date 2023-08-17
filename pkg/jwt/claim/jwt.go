@@ -14,24 +14,8 @@ func ClaimsFromSignedJWTWithRegistry(
 	keychain jwt.PublicKeychain,
 	registry Registrar,
 ) (Claims, error) {
-	object, err := jose.ParseSigned(jwtString)
-	if err != nil {
-		return nil, err
-	}
-
-	id := object.Signatures[0].Header.KeyID
-	key, ok := keychain.PublicKey(id).(jwt.PublicSigningKey)
-	if key == nil || !ok {
-		return nil, ErrKeyNotFound
-	}
-
-	bytes, err := object.Verify(key.PublicKey())
-	if err != nil {
-		return nil, err
-	}
-
 	values := make(map[string]json.RawMessage)
-	if err := json.Unmarshal(bytes, &values); err != nil {
+	if err := jwt.Verify(jwtString, &values, keychain); err != nil {
 		return nil, err
 	}
 
@@ -43,24 +27,8 @@ func ClaimsFromSignedJWT(jwt string, keychain jwt.PublicKeychain) (Claims, error
 }
 
 func ClaimsFromEncryptedJWTWithRegistry(jwtString string, keychain jwt.Keychain, registry Registrar) (Claims, error) {
-	object, err := jose.ParseEncrypted(jwtString)
-	if err != nil {
-		return nil, err
-	}
-
-	id := object.Header.KeyID
-	key, ok := keychain.PrivateKey(id).(jwt.PrivateEncryptionKey)
-	if key == nil || !ok {
-		return nil, ErrKeyNotFound
-	}
-
-	bytes, err := object.Decrypt(key.PrivateKey())
-	if err != nil {
-		return nil, err
-	}
-
 	values := make(map[string]json.RawMessage)
-	if err := json.Unmarshal(bytes, &values); err != nil {
+	if err := jwt.Decrypt(jwtString, &values, keychain); err != nil {
 		return nil, err
 	}
 
@@ -83,16 +51,9 @@ func ClaimsFromJWT(jwt string, keychain jwt.Keychain) (Claims, error) {
 	return ClaimsFromJWTWithRegistry(jwt, keychain, &DefaultRegistry)
 }
 
-func UnsafeDecodeClaimsFromJWTWithRegistry(jwt string, registry Registrar) (Claims, error) {
-	object, err := jose.ParseSigned(jwt)
-	if err != nil {
-		return nil, err
-	}
-
-	bytes := object.UnsafePayloadWithoutVerification()
-
+func UnsafeDecodeClaimsFromJWTWithRegistry(jwtString string, registry Registrar) (Claims, error) {
 	values := make(map[string]json.RawMessage)
-	if err := json.Unmarshal(bytes, &values); err != nil {
+	if err := jwt.UnsafeDecodeSigned(jwtString, &values); err != nil {
 		return nil, err
 	}
 
@@ -104,54 +65,9 @@ func UnsafeDecodeClaimsFromJWT(jwt string) (Claims, error) {
 }
 
 func (c Claims) SignJWT(key jwt.PrivateSigningKey) (string, error) {
-	bytes, err := c.MarshalJSON()
-	if err != nil {
-		return "", err
-	}
-
-	signer, err := jose.NewSigner(
-		jose.SigningKey{
-			Algorithm: key.SigningAlgorithm(),
-			Key:       jwt.JWKFromPrivateKey(key),
-		},
-		nil,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	signature, err := signer.Sign(bytes)
-	if err != nil {
-		return "", err
-	}
-
-	return signature.CompactSerialize()
+	return jwt.Sign(c, key)
 }
 
 func (c Claims) EncryptJWT(key jwt.PublicEncryptionKey, encryption jose.ContentEncryption) (string, error) {
-	bytes, err := c.MarshalJSON()
-	if err != nil {
-		return "", err
-	}
-
-	publicKey := jwt.JWKFromPublicKey(key)
-
-	encrypter, err := jose.NewEncrypter(
-		encryption,
-		jose.Recipient{
-			Algorithm: key.EncryptionKeyAlgorithm(),
-			Key:       &publicKey,
-		},
-		nil,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	cipher, err := encrypter.Encrypt(bytes)
-	if err != nil {
-		return "", err
-	}
-
-	return cipher.CompactSerialize()
+	return jwt.Encrypt(c, key, encryption)
 }

@@ -43,6 +43,7 @@ const (
 	ResponseTypeCode                      = oauth2.ResponseTypeCode
 	ResponseTypeToken                     = oauth2.ResponseTypeToken
 	ResponseTypeIDToken      ResponseType = "id_token"
+	ResponseTypeCodeIDToken  ResponseType = "code id_token"
 	ResponseTypeTokenIDToken ResponseType = "token id_token"
 )
 

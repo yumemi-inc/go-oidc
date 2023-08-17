@@ -6,6 +6,7 @@ import (
 	"github.com/samber/lo"
 	form "github.com/yumemi-inc/go-encoding-form"
 
+	"github.com/yumemi-inc/go-oidc/pkg/jwt"
 	oauth2 "github.com/yumemi-inc/go-oidc/pkg/oauth2/authz"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc"
 	"github.com/yumemi-inc/go-oidc/pkg/oidc/errors"
@@ -36,16 +37,18 @@ type ClaimRequests struct {
 type Request struct {
 	oauth2.Request
 
-	ResponseMode *oidc.ResponseMode `form:"response_mode"`
-	Claims       *ClaimRequests     `form:"claims"`
-	Nonce        *string            `form:"nonce"`
-	Display      *oidc.Display      `form:"display"`
-	Prompt       *oidc.Prompt       `form:"prompt"`
-	MaxAge       *int64             `form:"max_age"`
-	UILocales    *string            `form:"ui_locales"`
-	IDTokenHint  *string            `form:"id_token_hint"`
-	LoginHint    *string            `form:"login_hint"`
-	ACRValues    *string            `form:"acr_values"`
+	ResponseMode *oidc.ResponseMode `form:"response_mode" json:"response_mode"`
+	Claims       *ClaimRequests     `form:"claims" json:"claims"`
+	Nonce        *string            `form:"nonce" json:"nonce"`
+	Display      *oidc.Display      `form:"display" json:"display"`
+	Prompt       *oidc.Prompt       `form:"prompt" json:"prompt"`
+	MaxAge       *int64             `form:"max_age" json:"max_age"`
+	UILocales    *string            `form:"ui_locales" json:"ui_locales"`
+	IDTokenHint  *string            `form:"id_token_hint" json:"id_token_hint"`
+	LoginHint    *string            `form:"login_hint" json:"login_hint"`
+	ACRValues    *string            `form:"acr_values" json:"acr_values"`
+
+	RequestJWT *string `form:"request"`
 }
 
 func ReadRequest(r *http.Request) (*Request, error) {
@@ -55,6 +58,16 @@ func ReadRequest(r *http.Request) (*Request, error) {
 	}
 
 	return req, nil
+}
+
+// ExtractSignedRequestJWT extracts request parameters from the signed JWT of a request object at `request` parameter,
+// superseding other parameters currently set. If `request` parameter is not provided, it does nothing.
+func (r *Request) ExtractSignedRequestJWT(keychain jwt.PublicKeychain) error {
+	if r == nil || r.RequestJWT == nil {
+		return nil
+	}
+
+	return jwt.Verify(*r.RequestJWT, r, keychain)
 }
 
 func (r *Request) Validate(client oidc.Client) error {

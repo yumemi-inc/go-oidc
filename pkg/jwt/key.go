@@ -1,8 +1,14 @@
 package jwt
 
 import (
+	"errors"
+
 	"github.com/go-jose/go-jose/v3"
 	"github.com/samber/lo"
+)
+
+var (
+	ErrKeyNotFound = errors.New("key not found in the keychain")
 )
 
 type Key interface {

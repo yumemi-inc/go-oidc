@@ -2,11 +2,12 @@ package claim
 
 import (
 	"encoding/json"
-	"errors"
+
+	"github.com/yumemi-inc/go-oidc/pkg/jwt"
 )
 
 var (
-	ErrKeyNotFound = errors.New("key not found in the keychain")
+	ErrKeyNotFound = jwt.ErrKeyNotFound
 )
 
 type Claim interface {
