@@ -19,30 +19,27 @@ func NewPublic() *PublicKeychain {
 }
 
 func (k *PublicKeychain) Add(key jwt.PublicKey) {
-	switch key := key.(type) {
-	case jwt.PublicEncryptionKey:
+	if key, ok := key.(jwt.PublicEncryptionKey); ok {
 		k.encryptionKeys[key.KeyID()] = key
+	}
 
-	case jwt.PublicSigningKey:
+	if key, ok := key.(jwt.PublicSigningKey); ok {
 		k.signingKeys[key.KeyID()] = key
-
-	default:
-		panic("BUG: Unsupported public key type")
 	}
 }
 
 func (k *PublicKeychain) PublicKeys() []jwt.PublicKey {
-	keys := make([]jwt.PublicKey, 0, len(k.encryptionKeys)+len(k.signingKeys))
+	keys := make(map[string]jwt.PublicKey)
 
-	for _, key := range k.encryptionKeys {
-		keys = append(keys, key)
+	for id, key := range k.encryptionKeys {
+		keys[id] = key
 	}
 
-	for _, key := range k.signingKeys {
-		keys = append(keys, key)
+	for id, key := range k.signingKeys {
+		keys[id] = key
 	}
 
-	return keys
+	return lo.Values(keys)
 }
 
 func (k *PublicKeychain) PublicKey(id string) jwt.PublicKey {

@@ -19,30 +19,27 @@ func New() *Keychain {
 }
 
 func (k *Keychain) Add(keypair jwt.Keypair) {
-	switch keypair := keypair.(type) {
-	case jwt.EncryptionKeypair:
+	if keypair, ok := keypair.(jwt.EncryptionKeypair); ok {
 		k.encryptionKeypairs[keypair.KeyID()] = keypair
+	}
 
-	case jwt.SigningKeypair:
+	if keypair, ok := keypair.(jwt.SigningKeypair); ok {
 		k.signingKeypairs[keypair.KeyID()] = keypair
-
-	default:
-		panic("BUG: Unsupported keypair type")
 	}
 }
 
 func (k *Keychain) Keypairs() []jwt.Keypair {
-	keypairs := make([]jwt.Keypair, 0, len(k.encryptionKeypairs)+len(k.signingKeypairs))
+	keypairs := make(map[string]jwt.Keypair)
 
-	for _, key := range k.encryptionKeypairs {
-		keypairs = append(keypairs, key)
+	for id, keypair := range k.encryptionKeypairs {
+		keypairs[id] = keypair
 	}
 
-	for _, key := range k.signingKeypairs {
-		keypairs = append(keypairs, key)
+	for id, keypair := range k.signingKeypairs {
+		keypairs[id] = keypair
 	}
 
-	return keypairs
+	return lo.Values(keypairs)
 }
 
 func (k *Keychain) Keypair(id string) jwt.Keypair {
