@@ -51,7 +51,7 @@ func Encrypt(object any, key PublicEncryptionKey, encryption jose.ContentEncrypt
 		return "", err
 	}
 
-	publicKey := JWKFromPublicKey(key)
+	publicKey := JWKFromEncryptionKey(key)
 
 	encrypter, err := jose.NewEncrypter(
 		encryption,

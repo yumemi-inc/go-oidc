@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/go-jose/go-jose/v3"
-	"github.com/samber/lo"
 )
 
 var (
@@ -46,26 +45,51 @@ type Keychain interface {
 	PrivateKey(id string) PrivateKey
 }
 
-func JWKFromPublicKey(key PublicKey) jose.JSONWebKey {
-	var algorithm, use string
+func getKey(key Key) any {
 	switch key := key.(type) {
-	case PublicEncryptionKey:
-		algorithm = string(key.EncryptionKeyAlgorithm())
-		use = "enc"
+	case PublicKey:
+		return key.PublicKey()
 
-	case PublicSigningKey:
-		algorithm = string(key.SigningAlgorithm())
-		use = "sig"
+	case PrivateKey:
+		return key.PrivateKey()
 
 	default:
-		panic("BUG: Unsupported public key instance")
+		panic("BUG: Unknown key type")
+	}
+}
+
+func JWKFromEncryptionKey(key EncryptionKey) jose.JSONWebKey {
+	return jose.JSONWebKey{
+		Key:       getKey(key),
+		KeyID:     key.KeyID(),
+		Algorithm: string(key.EncryptionKeyAlgorithm()),
+		Use:       "enc",
+	}
+}
+
+func JWKFromSigningKey(key SigningKey) jose.JSONWebKey {
+	return jose.JSONWebKey{
+		Key:       getKey(key),
+		KeyID:     key.KeyID(),
+		Algorithm: string(key.SigningAlgorithm()),
+		Use:       "enc",
+	}
+}
+
+func JWKSFromKeys(key ...Key) jose.JSONWebKeySet {
+	keys := make([]jose.JSONWebKey, 0, len(key))
+	for _, k := range key {
+		if encryptionKey, ok := k.(EncryptionKey); ok {
+			keys = append(keys, JWKFromEncryptionKey(encryptionKey))
+		}
+
+		if signingKey, ok := k.(SigningKey); ok {
+			keys = append(keys, JWKFromSigningKey(signingKey))
+		}
 	}
 
-	return jose.JSONWebKey{
-		Key:       key.PublicKey(),
-		KeyID:     key.KeyID(),
-		Algorithm: algorithm,
-		Use:       use,
+	return jose.JSONWebKeySet{
+		Keys: keys,
 	}
 }
 
@@ -93,12 +117,11 @@ func JWKFromPrivateKey(key PrivateKey) jose.JSONWebKey {
 }
 
 func JWKSFromPublicKeychain(keychain PublicKeychain) jose.JSONWebKeySet {
-	return jose.JSONWebKeySet{
-		Keys: lo.Map(
-			keychain.PublicKeys(),
-			func(item PublicKey, _ int) jose.JSONWebKey {
-				return JWKFromPublicKey(item)
-			},
-		),
+	publicKeys := keychain.PublicKeys()
+	keys := make([]Key, 0, len(publicKeys))
+	for _, k := range publicKeys {
+		keys = append(keys, k)
 	}
+
+	return JWKSFromKeys(keys...)
 }

@@ -9,6 +9,7 @@ import (
 	form "github.com/yumemi-inc/go-encoding-form"
 
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2"
+	"github.com/yumemi-inc/go-oidc/pkg/oauth2/assertion"
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2/authz"
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2/errors"
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2/pkce"
@@ -32,7 +33,7 @@ type Request struct {
 	GrantType    oauth2.GrantType `form:"grant_type"`
 	ClientID     *string          `form:"client_id,omitempty"`
 	ClientSecret *string          `form:"client_secret,omitempty"`
-	// TODO: Assertions Framework
+	assertion.ClientAssertion
 }
 
 func (r *Request) AuthenticateClient(
