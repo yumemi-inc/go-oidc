@@ -72,7 +72,7 @@ func JWKFromSigningKey(key SigningKey) jose.JSONWebKey {
 		Key:       getKey(key),
 		KeyID:     key.KeyID(),
 		Algorithm: string(key.SigningAlgorithm()),
-		Use:       "enc",
+		Use:       "sig",
 	}
 }
 
