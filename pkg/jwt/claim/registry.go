@@ -87,6 +87,17 @@ func NewRegistryWithMutex() RegistryWithMutex {
 	}
 }
 
+func (r *RegistryWithMutex) Clone() RegistryWithMutex {
+	registry := NewRegistryWithMutex()
+
+	for name, fn := range r.Registry {
+		registry.Add(name, fn)
+	}
+
+	//goland:noinspection GoVetCopyLock
+	return registry
+}
+
 func (r *RegistryWithMutex) Add(name string, fn UnmarshalFunc) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()

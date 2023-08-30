@@ -7,7 +7,7 @@ import (
 type Registrar = claim.Registrar
 
 var (
-	DefaultRegistry = claim.NewRegistryWithMutex()
+	DefaultRegistry = claim.DefaultRegistry.Clone()
 )
 
 func init() {
