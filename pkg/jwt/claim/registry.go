@@ -15,8 +15,10 @@ func init() {
 	AddUnmarshaler[Iss](&DefaultRegistry)
 	AddUnmarshaler[Sub](&DefaultRegistry)
 	AddUnmarshaler[Aud](&DefaultRegistry)
+	AddUnmarshaler[ClientID](&DefaultRegistry)
 	AddUnmarshaler[Exp](&DefaultRegistry)
 	AddUnmarshaler[Iat](&DefaultRegistry)
+	AddUnmarshaler[Jti](&DefaultRegistry)
 }
 
 type UnmarshalFunc func(bytes []byte) (Claim, error)
