@@ -1,9 +1,6 @@
 package pkce
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
-
 	"github.com/samber/lo"
 
 	"github.com/yumemi-inc/go-oidc/pkg/oauth2/errors"
@@ -62,19 +59,4 @@ func (c *Challenge) Validate(mode Mode) error {
 	}
 
 	return nil
-}
-
-func (c *Challenge) Transform() string {
-	switch lo.FromPtr(c.CodeChallengeMethod) {
-	case CodeChallengeMethodS256:
-		digest := sha256.Sum256([]byte(lo.FromPtr(c.CodeChallenge)))
-
-		return base64.URLEncoding.EncodeToString(digest[:])
-
-	case CodeChallengeMethodPlain:
-		fallthrough
-
-	default:
-		return lo.FromPtr(c.CodeChallenge)
-	}
 }

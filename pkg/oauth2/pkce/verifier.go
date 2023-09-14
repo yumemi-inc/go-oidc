@@ -23,7 +23,7 @@ func (v *Verifier) Transform(method CodeChallengeMethod) string {
 	case CodeChallengeMethodS256:
 		digest := sha256.Sum256([]byte(lo.FromPtr(v.CodeVerifier)))
 
-		return base64.URLEncoding.EncodeToString(digest[:])
+		return base64.RawURLEncoding.EncodeToString(digest[:])
 
 	case CodeChallengeMethodPlain:
 		fallthrough
