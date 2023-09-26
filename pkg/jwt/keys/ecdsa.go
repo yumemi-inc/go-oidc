@@ -71,6 +71,41 @@ func (k ECDSAKeypair) SigningAlgorithm() jose.SignatureAlgorithm {
 	return k.ECDSAPublicKey.SigningAlgorithm()
 }
 
+func ECDSAPublicKeyFrom(
+	id string,
+	key ecdsa.PublicKey,
+	alg jose.SignatureAlgorithm,
+) *ECDSAPublicKey {
+	return &ECDSAPublicKey{
+		id:  id,
+		alg: alg,
+		key: key,
+	}
+}
+
+func ECDSAPrivateKeyFrom(
+	id string,
+	key ecdsa.PrivateKey,
+	alg jose.SignatureAlgorithm,
+) *ECDSAPrivateKey {
+	return &ECDSAPrivateKey{
+		id:  id,
+		alg: alg,
+		key: key,
+	}
+}
+
+func ECDSAKeypairFrom(
+	id string,
+	key ecdsa.PrivateKey,
+	alg jose.SignatureAlgorithm,
+) *ECDSAKeypair {
+	return &ECDSAKeypair{
+		ECDSAPublicKey:  *ECDSAPublicKeyFrom(id, key.PublicKey, alg),
+		ECDSAPrivateKey: *ECDSAPrivateKeyFrom(id, key, alg),
+	}
+}
+
 func GenerateECDSAKeypairWith(
 	alg jose.SignatureAlgorithm,
 	curve elliptic.Curve,
@@ -88,18 +123,7 @@ func GenerateECDSAKeypairWith(
 		return nil, err
 	}
 
-	return &ECDSAKeypair{
-		ECDSAPublicKey: ECDSAPublicKey{
-			id:  keyID,
-			alg: alg,
-			key: privateKey.PublicKey,
-		},
-		ECDSAPrivateKey: ECDSAPrivateKey{
-			id:  keyID,
-			alg: alg,
-			key: *privateKey,
-		},
-	}, nil
+	return ECDSAKeypairFrom(keyID, *privateKey, alg), nil
 }
 
 func GenerateECDSAKeypair(alg jose.SignatureAlgorithm) (*ECDSAKeypair, error) {
