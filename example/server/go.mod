@@ -5,7 +5,7 @@ go 1.20
 replace github.com/yumemi-inc/go-oidc => ../..
 
 require (
-	github.com/go-jose/go-jose/v3 v3.0.0
+	github.com/go-jose/go-jose/v3 v3.0.1
 	github.com/gorilla/sessions v1.2.1
 	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo/v4 v4.10.2
