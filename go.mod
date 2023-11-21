@@ -3,7 +3,7 @@ module github.com/yumemi-inc/go-oidc
 go 1.20
 
 require (
-	github.com/go-jose/go-jose/v3 v3.0.0
+	github.com/go-jose/go-jose/v3 v3.0.1
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.4
 	github.com/yumemi-inc/go-encoding-form v0.0.0-20230803103229-f412658d597f
